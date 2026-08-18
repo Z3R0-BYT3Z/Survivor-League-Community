@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="610" viewBox="0 0 1040 610">
+  <defs>
+    <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse"><path d="M32 0H0V32" fill="none" stroke="#2b3440" opacity=".2"/></pattern>
+    <linearGradient id="fade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#151a20"/><stop offset="1" stop-color="#080b0f"/></linearGradient>
+  </defs>
+  <rect x="1" y="1" width="1038" height="608" fill="url(#fade)" stroke="#ebebeb" stroke-width="2"/>
+  <rect x="2" y="2" width="1036" height="606" fill="url(#grid)"/>
+  <rect x="2" y="2" width="1036" height="25" fill="#07090c"/>
+  <path d="M2 27H1038M2 101H1038M2 554H1038" stroke="#ebebeb" opacity=".75"/>
+  <text x="18" y="18" fill="#ebebeb" font-family="DejaVu Sans Mono" font-size="10" letter-spacing="4">SURVIVOR LEAGUE // COMMUNITY EDITION // SERVER COMPETITION //</text>
+  <circle cx="22" cy="54" r="4" fill="#65d98a"/><circle cx="22" cy="54" r="9" fill="none" stroke="#65d98a" opacity=".2"/>
+  <text x="38" y="58" fill="#65d98a" font-family="DejaVu Sans Mono" font-size="12" font-weight="bold" letter-spacing="4">LEADERBOARD STATUS: ONLINE</text>
+  <text x="18" y="79" fill="#7d8792" font-family="DejaVu Sans Mono" font-size="9" letter-spacing="2">HOST-VALIDATED TRACKING</text>
+  <text x="1008" y="54" text-anchor="end" fill="#7d8792" font-family="DejaVu Sans Mono" font-size="9" letter-spacing="2">BUILD 42</text>
+  <text x="1008" y="76" text-anchor="end" fill="#ebebeb" font-family="DejaVu Sans Mono" font-size="14" font-weight="bold" letter-spacing="3">MULTIPLAYER</text>
+  <text x="22" y="137" fill="#f1f4f7" font-family="DejaVu Sans" font-size="35" font-weight="bold">SURVIVOR</text>
+  <text x="244" y="137" fill="#ebebeb" font-family="DejaVu Sans" font-size="35" font-weight="bold">LEAGUE</text>
+  <path d="M22 150H672M690 150H1018" stroke="#ebebeb" opacity=".75"/>
+  <rect x="22" y="166" width="650" height="370" fill="#080b0f" fill-opacity=".85" stroke="#343d47"/>
+  <rect x="690" y="166" width="328" height="370" fill="#080b0f" fill-opacity=".85" stroke="#343d47"/>
+  <path d="M22 166h20M22 166v20M652 166h20M672 166v20M22 516v20M22 536h20M652 536h20M672 516v20" stroke="#ebebeb" stroke-width="2"/>
+  <path d="M690 166h20M690 166v20M998 166h20M1018 166v20M690 516v20M690 536h20M998 536h20M1018 516v20" stroke="#ebebeb" stroke-width="2"/>
+  <text x="40" y="197" fill="#8d98a5" font-family="DejaVu Sans Mono" font-size="11" font-weight="bold" letter-spacing="2">RANK</text>
+  <text x="108" y="197" fill="#8d98a5" font-family="DejaVu Sans Mono" font-size="11" font-weight="bold" letter-spacing="2">SURVIVOR</text>
+  <text x="520" y="197" text-anchor="end" fill="#8d98a5" font-family="DejaVu Sans Mono" font-size="11" font-weight="bold">SEASON KILLS</text>
+  <text x="650" y="197" text-anchor="end" fill="#8d98a5" font-family="DejaVu Sans Mono" font-size="11" font-weight="bold">TOTAL KILLS</text>
+  <path d="M35 209H660M706 209H1002" stroke="#343d47"/>
+  <text x="854" y="198" text-anchor="middle" fill="#f1f4f7" font-family="DejaVu Sans Mono" font-size="14" font-weight="bold" letter-spacing="2">SEASON REWARDS</text>
+  <rect x="2" y="555" width="1036" height="53" fill="#07090c"/>
+  <circle cx="22" cy="581" r="4" fill="#65d98a"/>
+  <text x="36" y="585" fill="#65d98a" font-family="DejaVu Sans Mono" font-size="10" font-weight="bold" letter-spacing="2">LIVE</text>
+  <text x="112" y="585" fill="#ebebeb" font-family="DejaVu Sans Mono" font-size="10" letter-spacing="2">F6 TO CLOSE</text>
+  <text x="520" y="585" text-anchor="middle" fill="#7d8792" font-family="DejaVu Sans Mono" font-size="9" letter-spacing="4">CREATED BY Z3R0X92</text>
+  <rect x="842" y="565" width="176" height="32" fill="#090d12" stroke="#ebebeb"/>
+  <text x="930" y="586" text-anchor="middle" fill="#ebebeb" font-family="DejaVu Sans Mono" font-size="11" font-weight="bold" letter-spacing="2">REFRESH</text>
+</svg>

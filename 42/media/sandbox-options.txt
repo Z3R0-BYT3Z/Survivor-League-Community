@@ -1,0 +1,80 @@
+VERSION = 1,
+
+option SurvivorLeagueCommunity.JoinAnnouncements { type = boolean, default = true, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_JoinAnnouncements, }
+option SurvivorLeagueCommunity.JoinPrefix { type = string, default = SURVIVOR LEAGUE, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_JoinPrefix, }
+option SurvivorLeagueCommunity.JoinDuplicateCooldown { type = integer, min = 0, max = 3600, default = 60, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_JoinDuplicateCooldown, }
+option SurvivorLeagueCommunity.JoinMessage1 { type = string, default = "", page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_JoinMessage1, }
+option SurvivorLeagueCommunity.JoinMessage2 { type = string, default = "", page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_JoinMessage2, }
+option SurvivorLeagueCommunity.JoinMessage3 { type = string, default = "", page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_JoinMessage3, }
+option SurvivorLeagueCommunity.JoinMessage4 { type = string, default = "", page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_JoinMessage4, }
+option SurvivorLeagueCommunity.JoinMessage5 { type = string, default = "", page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_JoinMessage5, }
+option SurvivorLeagueCommunity.JoinMessage6 { type = string, default = "", page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_JoinMessage6, }
+option SurvivorLeagueCommunity.JoinMessage7 { type = string, default = "", page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_JoinMessage7, }
+option SurvivorLeagueCommunity.JoinMessage8 { type = string, default = "", page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_JoinMessage8, }
+option SurvivorLeagueCommunity.JoinMessage9 { type = string, default = "", page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_JoinMessage9, }
+option SurvivorLeagueCommunity.JoinMessage10 { type = string, default = "", page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_JoinMessage10, }
+option SurvivorLeagueCommunity.JoinMessage11 { type = string, default = "", page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_JoinMessage11, }
+option SurvivorLeagueCommunity.JoinMessage12 { type = string, default = "", page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_JoinMessage12, }
+option SurvivorLeagueCommunity.JoinMessage13 { type = string, default = "", page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_JoinMessage13, }
+option SurvivorLeagueCommunity.JoinMessage14 { type = string, default = "", page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_JoinMessage14, }
+option SurvivorLeagueCommunity.JoinMessage15 { type = string, default = "", page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_JoinMessage15, }
+option SurvivorLeagueCommunity.JoinMessage16 { type = string, default = "", page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_JoinMessage16, }
+option SurvivorLeagueCommunity.JoinMessage17 { type = string, default = "", page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_JoinMessage17, }
+option SurvivorLeagueCommunity.JoinMessage18 { type = string, default = "", page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_JoinMessage18, }
+option SurvivorLeagueCommunity.JoinMessage19 { type = string, default = "", page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_JoinMessage19, }
+option SurvivorLeagueCommunity.JoinMessage20 { type = string, default = "", page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_JoinMessage20, }
+
+option SurvivorLeagueCommunity.Enabled { type = boolean, default = true, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_Enabled, }
+option SurvivorLeagueCommunity.SeasonDays { type = integer, min = 1, max = 90, default = 7, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_SeasonDays, }
+option SurvivorLeagueCommunity.MinimumKills { type = integer, min = 0, max = 100000, default = 25, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_MinimumKills, }
+option SurvivorLeagueCommunity.LeaderboardSize { type = integer, min = 3, max = 50, default = 10, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_LeaderboardSize, }
+option SurvivorLeagueCommunity.AllowClientKillReports { type = boolean, default = false, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_AllowClientKillReports, }
+option SurvivorLeagueCommunity.ClientKillReportIntervalSeconds { type = integer, min = 1, max = 300, default = 15, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_ClientKillReportIntervalSeconds, }
+option SurvivorLeagueCommunity.ClientKillMaxPerMinute { type = integer, min = 1, max = 1000, default = 120, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_ClientKillMaxPerMinute, }
+option SurvivorLeagueCommunity.AllowClientDeathReports { type = boolean, default = true, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_AllowClientDeathReports, }
+option SurvivorLeagueCommunity.DeathAnnouncements { type = boolean, default = true, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_DeathAnnouncements, }
+option SurvivorLeagueCommunity.DeathIncludeSurvivalTime { type = boolean, default = true, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_DeathIncludeSurvivalTime, }
+option SurvivorLeagueCommunity.DeathIncludeSeasonKills { type = boolean, default = true, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_DeathIncludeSeasonKills, }
+option SurvivorLeagueCommunity.DeathIncludeTotalKills { type = boolean, default = true, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_DeathIncludeTotalKills, }
+option SurvivorLeagueCommunity.DeathMinimumHours { type = integer, min = 0, max = 100000, default = 0, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_DeathMinimumHours, }
+option SurvivorLeagueCommunity.DeathPrefix { type = string, default = SURVIVOR LOST, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_DeathPrefix, }
+
+option SurvivorLeagueCommunity.FirstItems { type = string, default = Base.Axe:1;Base.FirstAidKit:1;Base.CannedFood:6, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_FirstItems, }
+option SurvivorLeagueCommunity.SecondItems { type = string, default = Base.HandAxe:1;Base.FirstAidKit:1;Base.CannedFood:4, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_SecondItems, }
+option SurvivorLeagueCommunity.ThirdItems { type = string, default = Base.FirstAidKit:1;Base.CannedFood:3, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_ThirdItems, }
+option SurvivorLeagueCommunity.FirstXP { type = integer, min = 0, max = 100000, default = 1000, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_FirstXP, }
+option SurvivorLeagueCommunity.SecondXP { type = integer, min = 0, max = 100000, default = 500, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_SecondXP, }
+option SurvivorLeagueCommunity.ThirdXP { type = integer, min = 0, max = 100000, default = 250, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_ThirdXP, }
+option SurvivorLeagueCommunity.XPPerk { type = string, default = Sprinting, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_XPPerk, }
+option SurvivorLeagueCommunity.FirstAddTrait { type = string, default = "", page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_FirstAddTrait, }
+option SurvivorLeagueCommunity.FirstRemoveTrait { type = string, default = "", page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_FirstRemoveTrait, }
+option SurvivorLeagueCommunity.SecondAddTrait { type = string, default = "", page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_SecondAddTrait, }
+option SurvivorLeagueCommunity.SecondRemoveTrait { type = string, default = "", page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_SecondRemoveTrait, }
+option SurvivorLeagueCommunity.ThirdAddTrait { type = string, default = "", page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_ThirdAddTrait, }
+option SurvivorLeagueCommunity.ThirdRemoveTrait { type = string, default = "", page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_ThirdRemoveTrait, }
+
+option SurvivorLeagueCommunity.KillTier1Enabled { type = boolean, default = true, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_KillTier1Enabled, }
+option SurvivorLeagueCommunity.KillTier1Kills { type = integer, min = 1, max = 100000, default = 100, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_KillTier1Kills, }
+option SurvivorLeagueCommunity.KillTier1Items { type = string, default = "", page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_KillTier1Items, }
+option SurvivorLeagueCommunity.KillTier1XP { type = integer, min = 0, max = 100000, default = 0, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_KillTier1XP, }
+option SurvivorLeagueCommunity.KillTier1XPPerk { type = string, default = Sprinting, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_KillTier1XPPerk, }
+option SurvivorLeagueCommunity.KillTier2Enabled { type = boolean, default = true, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_KillTier2Enabled, }
+option SurvivorLeagueCommunity.KillTier2Kills { type = integer, min = 1, max = 100000, default = 250, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_KillTier2Kills, }
+option SurvivorLeagueCommunity.KillTier2Items { type = string, default = "", page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_KillTier2Items, }
+option SurvivorLeagueCommunity.KillTier2XP { type = integer, min = 0, max = 100000, default = 0, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_KillTier2XP, }
+option SurvivorLeagueCommunity.KillTier2XPPerk { type = string, default = Sprinting, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_KillTier2XPPerk, }
+option SurvivorLeagueCommunity.KillTier3Enabled { type = boolean, default = true, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_KillTier3Enabled, }
+option SurvivorLeagueCommunity.KillTier3Kills { type = integer, min = 1, max = 100000, default = 500, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_KillTier3Kills, }
+option SurvivorLeagueCommunity.KillTier3Items { type = string, default = "", page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_KillTier3Items, }
+option SurvivorLeagueCommunity.KillTier3XP { type = integer, min = 0, max = 100000, default = 0, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_KillTier3XP, }
+option SurvivorLeagueCommunity.KillTier3XPPerk { type = string, default = Sprinting, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_KillTier3XPPerk, }
+option SurvivorLeagueCommunity.KillTier4Enabled { type = boolean, default = true, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_KillTier4Enabled, }
+option SurvivorLeagueCommunity.KillTier4Kills { type = integer, min = 1, max = 100000, default = 750, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_KillTier4Kills, }
+option SurvivorLeagueCommunity.KillTier4Items { type = string, default = "", page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_KillTier4Items, }
+option SurvivorLeagueCommunity.KillTier4XP { type = integer, min = 0, max = 100000, default = 0, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_KillTier4XP, }
+option SurvivorLeagueCommunity.KillTier4XPPerk { type = string, default = Sprinting, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_KillTier4XPPerk, }
+option SurvivorLeagueCommunity.KillTier5Enabled { type = boolean, default = true, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_KillTier5Enabled, }
+option SurvivorLeagueCommunity.KillTier5Kills { type = integer, min = 1, max = 100000, default = 1000, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_KillTier5Kills, }
+option SurvivorLeagueCommunity.KillTier5Items { type = string, default = "", page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_KillTier5Items, }
+option SurvivorLeagueCommunity.KillTier5XP { type = integer, min = 0, max = 100000, default = 0, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_KillTier5XP, }
+option SurvivorLeagueCommunity.KillTier5XPPerk { type = string, default = Sprinting, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_KillTier5XPPerk, }
