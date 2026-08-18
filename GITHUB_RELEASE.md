@@ -14,14 +14,16 @@ Open-source Project Zomboid Build 42 multiplayer leaderboard with persistent lif
 
 ## Release title
 
-Survivor League Community Edition v1.3.0
+Survivor League v1.6.0 — Unified Edition
 
 ## Release description
 
-Survivor League Community Edition is a brand-neutral Project Zomboid Build 42 multiplayer competition mod for community servers.
+Survivor League is a unified Project Zomboid Build 42 multiplayer competition mod for community servers.
 
-The F6 leaderboard tracks Season Kills, representing the current survivor's active kill streak, and Total Kills, representing the player's permanent lifetime total across deaths, reconnects, seasons, and server restarts.
+The F6 Command Center tracks cumulative Season Kills, permanent Total Kills, Current Streak, and Best Streak as separate statistics.
 
-Server owners can configure season duration, minimum qualifying kills, leaderboard size, podium item bundles, perk XP, traits, five kill-streak reward tiers, death notices, and randomized join announcements. Version 1.3.0 adds 20 admin-editable welcome-message slots, automatic `{name}` replacement, configurable announcement prefix and cooldown, a retry-and-acknowledgment connection handshake, and corrected Build 42 chat rendering.
+Server owners can configure season duration, minimum qualifying kills, podium item bundles, perk XP, traits, five kill-streak reward tiers, death notices, and randomized join announcements. All registered scores are sent and paginated; the legacy leaderboard-size field remains only for Sandbox preset compatibility.
+
+Version 1.6.0 consolidates the former Community and Meeks Protocol editions. Servers can select Project Zomboid, Meeks Protocol, or Military styling, configure their own title/subtitle, and optionally permit player cosmetic overrides. A guarded migration imports legacy Meeks standings only when the canonical dataset is empty and preserves the original data as a backup.
 
 The host validates kill deltas and performs persistence and reward settlement to reduce duplicated or manipulated credit. Created and maintained by Z3R0X92 and released under the MIT License for free community use and modification.

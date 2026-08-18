@@ -29,7 +29,7 @@
   <rect x="2" y="555" width="1036" height="53" fill="#07090c"/>
   <circle cx="22" cy="581" r="4" fill="#65d98a"/>
   <text x="36" y="585" fill="#65d98a" font-family="DejaVu Sans Mono" font-size="10" font-weight="bold" letter-spacing="2">LIVE</text>
-  <text x="112" y="585" fill="#ebebeb" font-family="DejaVu Sans Mono" font-size="10" letter-spacing="2">F6 TO CLOSE</text>
+  <text x="112" y="585" fill="#ebebeb" font-family="DejaVu Sans Mono" font-size="10" letter-spacing="2">CONFIGURED KEY TO CLOSE</text>
   <text x="520" y="585" text-anchor="middle" fill="#7d8792" font-family="DejaVu Sans Mono" font-size="9" letter-spacing="4">CREATED BY Z3R0X92</text>
   <rect x="842" y="565" width="176" height="32" fill="#090d12" stroke="#ebebeb"/>
   <text x="930" y="586" text-anchor="middle" fill="#ebebeb" font-family="DejaVu Sans Mono" font-size="11" font-weight="bold" letter-spacing="2">REFRESH</text>

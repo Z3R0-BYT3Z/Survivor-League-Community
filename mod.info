@@ -1,5 +1,5 @@
-name=Survivor League Community Edition
+name=Survivor League
 id=SurvivorLeagueCommunity
 author=Z3R0X92
-description=Brand-neutral Build 42 multiplayer seasons, leaderboards, rewards, death notices, and configurable join announcements.
-version=1.3.3
+description=A unified seasonal competition system with selectable Project Zomboid, Meeks Protocol, and Military interface themes.
+version=1.6.0

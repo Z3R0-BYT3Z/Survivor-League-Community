@@ -1,19 +1,24 @@
-# Survivor League Community Edition
+# Survivor League
 
-Survivor League Community Edition is a free, open-source Project Zomboid Build 42 multiplayer mod that adds persistent seasonal competition, lifetime stat tracking, configurable rewards, server announcements, and an in-game leaderboard to community servers.
+Survivor League is the unified, open-source Project Zomboid Build 42 multiplayer competition mod. It combines the former Community and Meeks Protocol editions through selectable interface themes while retaining one authoritative scoring and persistence system.
 
 ## Features
 
-- **Season and lifetime kill tracking:** Season Kills follow the survivor's active life and reset on death, while Total Kills remain persistent across deaths, reconnects, seasons, and server restarts.
-- **Live F6 leaderboard:** View current rankings, the top-three podium, season countdown, reward previews, and paginated player lists without leaving the game.
-- **Configurable seasons and podium rewards:** Admins can set season duration, qualifying kills, leaderboard size, item bundles, perk XP, and traits through native Sandbox Options.
+- **Separate season, lifetime, and streak tracking:** Season Kills accumulate for the entire season, Total Kills remain persistent, and the independent kill streak resets on death.
+- **Tabbed Command Center:** Press F6 by default to view the 10-player-per-page leaderboard, personal stats, season history, podium and streak rewards, and authorized admin controls. The key code is configurable in Sandbox Options.
+- **Configurable seasons and podium rewards:** Admins can set season duration, qualifying kills, item bundles, perk XP, and traits through native Sandbox Options.
 - **Five kill-streak reward tiers:** Each tier can award configurable items and perk XP once per survivor life, then resets on death.
-- **Death announcements:** Optional server-wide notices can include survival time, Season Kills, Total Kills, and a custom prefix.
+- **Death announcements:** Optional server-wide notices can include survival time, Season Kills, Total Kills, and a custom prefix. Server chat and above-player halo delivery can be controlled separately; chat is enabled and halos are disabled by default.
 - **Randomized join announcements:** Welcome connecting players with up to 20 admin-editable messages. `{name}` automatically inserts the player's name; prefix, cooldown, and enable/disable controls are available through Sandbox Options.
 - **Build 42 chat compatibility:** Announcement rendering explicitly binds the current chat API and falls back to an on-screen notice when necessary.
 - **Server-first synchronization:** Dedicated servers track kills from the server player object. An optional hosted/co-op client fallback is disabled by default and protected by configurable time-based rate limits.
 - **Verified death fallback:** Optional client death reports are accepted only when the server confirms that the player is dead.
 - **Master enable control:** Disabling the mod now stops tracking, commands, rewards, join notices, death notices, and leaderboard requests consistently.
+- **Protocol verification:** Clients must complete an exact protocol and release handshake before gameplay or administrative commands are accepted.
+- **UTF-8-safe names:** Multibyte player and character names are sanitized and truncated only at valid character boundaries.
+- **Three interface themes:** Choose Project Zomboid, Meeks Protocol, or Military styling through Sandbox Options, with optional cosmetic player overrides.
+- **White-label branding:** Configure the Command Center title and subtitle without maintaining a separate build.
+- **Guarded legacy migration:** Empty Community datasets can import the former `SurvivorLeagueData` table without deleting it. Populated datasets are never merged automatically.
 - **Relay-ready logging:** Structured `[SurvivorLeagueKill]`, `[SurvivorLeagueDeath]`, and `[SurvivorLeagueCommunityJoin]` markers can be consumed by optional Discord or website relays.
 
 ## Configuration
@@ -24,11 +29,21 @@ Blank join-message slots are ignored. Use `{name}` anywhere the connecting playe
 
 Dedicated servers should leave **Allow hosted/co-op client kill-report fallback** disabled. Enable it only when a hosted/co-op session does not expose updated zombie kills to the server player object. The fallback's report interval and maximum kills per minute can be adjusted in Sandbox Options.
 
+Season expiry is checked when the server starts, once per minute, and during normal player polling. A settlement guard prevents overlapping timer or admin requests from issuing duplicate podium rewards.
+
+**Season Kills are cumulative for the active season.** Death resets only Current Streak and its once-per-life milestone claims. Total Kills and Best Streak remain persistent. The legacy `LeaderboardSize` value is still read from saved presets for compatibility, but the option is hidden and the Command Center always paginates all registered scores at 10 players per page.
+
+Leaderboard requests are throttled on both client and server, and player names are sanitized and length-limited before being sent to the interface. Verified client death reports are disabled by default and should only be enabled for hosted/co-op sessions that miss native death events.
+
+The Command Center key defaults to Project Zomboid key code `64` (F6). Set **Command Center key code** to another valid key code to rebind it. Server logs include structured protocol decisions, automatic-settlement triggers, admin settlement requests, rejected unauthorized settlement attempts, and settlement completion summaries.
+
+See `ARCHITECTURE.md` and `MIGRATION.md` for the unified runtime and legacy Meeks transition procedure.
+
 ## Installation
 
 1. Install the mod through Steam Workshop or copy `SurvivorLeagueCommunity` into the Project Zomboid mods directory.
 2. Add `SurvivorLeagueCommunity` to the server's `Mods=` setting.
-3. Configure the mod under **Survivor League Community Edition** in Sandbox Options.
+3. Configure the mod under **Survivor League** in Sandbox Options.
 4. Restart the server after changing settings.
 
 - Workshop ID: `3784151798`

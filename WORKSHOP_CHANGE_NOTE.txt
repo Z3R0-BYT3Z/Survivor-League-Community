@@ -1,0 +1,1 @@
+v1.6.0: unifies Community and Meeks Protocol through three selectable themes, custom branding, optional player cosmetic overrides, and guarded legacy standings/settings migration.

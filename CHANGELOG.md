@@ -1,5 +1,59 @@
 # Changelog
 
+## 1.6.0 — 2026-08-18
+
+- Consolidated Community and Meeks Protocol gameplay into one canonical Mod ID and Workshop item.
+- Added Project Zomboid, Meeks Protocol, and Military interface themes.
+- Added configurable interface title/subtitle and optional per-player cosmetic theme cycling.
+- Added guarded `SurvivorLeagueData` migration that preserves legacy data and refuses to merge two populated datasets.
+- Added a temporary legacy-Meeks Sandbox settings fallback after successful migration.
+- Bumped the compatibility protocol to v2 and persistent schema to v8.
+- Converted the old Meeks Workshop package into a non-scoring migration notice for staged deployment.
+
+## 1.5.0 — 2026-08-18
+
+- Added exact client/server protocol and release verification before commands are accepted.
+- Added UTF-8-safe name sanitization, measurement, and truncation.
+- Added a configurable Command Center key code with F6 (`64`) as the safe default.
+- Expanded audit logs for accepted/rejected protocols, automatic settlement triggers, admin requests, authorization failures, failures, and completed settlements.
+- Established a reproducible shared-core variant builder; Community client/server Lua is mechanically derived from the branded canonical feature core.
+- Preserved cumulative Season Kills, separate per-life streaks, 10-player pagination, edition-specific IDs, and edition-specific branding.
+- Added Community Workshop change notes and GitHub correction guidance.
+
+## 1.4.0 — 2026-08-18
+
+- Separated cumulative Season Kills from the per-life kill streak; death now resets only streak progress and milestone claims.
+- Added the full tabbed Community Command Center with leaderboard, personal stats, season history, rewards, and authorized admin tabs.
+- Standardized leaderboard pagination at 10 registered players per page.
+- Added client/server leaderboard request throttling and server-side player-name sanitization.
+- Hid the deprecated `LeaderboardSize` option while continuing to read existing saved preset values.
+- Disabled verified client death reports by default.
+- Preserved Community Edition identifiers, off-white branding, scheduled settlement, reward safeguards, and optional radio integration.
+
+## 1.3.6 — 2026-08-18
+
+- publishes season podium results and completed kill-streak milestones through the optional Radio Frequencies server integration API;
+- remains fully functional when Radio Frequencies is not installed.
+
+## 1.3.5 — 2026-08-18
+
+- Added startup and once-per-minute season-expiry checks so seasons settle even when no player-update callback reaches the timer path.
+- Added an in-progress settlement guard and protected settlement execution to prevent duplicate rewards and overlapping season resets.
+- Improved leaderboard sizing and screen-edge clamping for smaller resolutions while preserving the existing layout and pagination rules.
+- Truncated unusually long display names to protect score-column alignment.
+- Added separate Sandbox controls for death announcements in server chat and above players; chat remains enabled and halos disabled by default.
+- Removed client-provided survival duration from the death-report payload.
+- Removed redundant XP retry handling so each reward component is attempted once per retry cycle.
+
+## 1.3.4 — 2026-08-18
+
+- Resumed server-first kill tracking safely when the hosted/co-op client fallback is disabled, without importing existing character kills.
+- Removed client-provided survival time from verified death processing; announcements now use the server player object's survival duration.
+- Kept failed milestone and podium rewards pending instead of silently marking or clearing them.
+- Added structured diagnostics for invalid items, perks, traits, and failed reward delivery.
+- Deprecated the inactive `LeaderboardSize` setting without removing it from existing Sandbox presets; all registered scores remain paginated.
+- Clarified that Season Kills intentionally represent the current survivor life and reset on death.
+
 ## 1.3.3 — 2026-08-17
 
 - Made server-side zombie-kill tracking the default and disabled client kill reports by default.
