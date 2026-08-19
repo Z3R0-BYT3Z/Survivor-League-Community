@@ -39,6 +39,18 @@ local function reportLocalKills(force)
     end
 end
 
+function SL.requestScoreCorrection(username, seasonKills, totalKills, streakKills, reason)
+    if not protocolCompatible then return false end
+    sendClientCommand(SL.MODULE, "CorrectScore", {
+        username = tostring(username or ""),
+        seasonKills = tonumber(seasonKills) or 0,
+        totalKills = tonumber(totalKills) or 0,
+        streakKills = tonumber(streakKills) or 0,
+        reason = tostring(reason or "manual correction"),
+    })
+    return true
+end
+
 local function refreshBoard()
     if not protocolCompatible then return end
     local now = SL.now()
@@ -479,6 +491,8 @@ local function onServerCommand(module, command, args)
             "Survivor League reward received: place #"
                 .. tostring(args.place)
         )
+    elseif command == "ScoreCorrectionResult" and getPlayer() then
+        getPlayer():Say(args and args.ok and ("Survivor League score corrected for "..tostring(args.username)) or ("Score correction failed: "..tostring(args and args.reason or "unknown")))
     elseif command == "ScoreReset"
         and getPlayer()
         and args.username == SL.playerKey(getPlayer())

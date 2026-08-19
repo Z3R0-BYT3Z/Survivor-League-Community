@@ -19,6 +19,7 @@ Survivor League is the unified, open-source Project Zomboid Build 42 multiplayer
 - **Three interface themes:** Choose Project Zomboid, Meeks Protocol, or Military styling through Sandbox Options, with optional cosmetic player overrides.
 - **White-label branding:** Configure the Command Center title and subtitle without maintaining a separate build.
 - **Guarded legacy migration:** Empty Community datasets can import the former `SurvivorLeagueData` table without deleting it. Populated datasets are never merged automatically.
+- **Audited score correction:** Authorized administrators can correct stored season, lifetime, and streak totals through the server-authoritative `SurvivorLeagueCommunity.AdminAPI.correctScore` function; every change records actor, target, before/after values, and reason.
 - **Relay-ready logging:** Structured `[SurvivorLeagueKill]`, `[SurvivorLeagueDeath]`, and `[SurvivorLeagueCommunityJoin]` markers can be consumed by optional Discord or website relays.
 
 ## Configuration

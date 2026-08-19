@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.7.0 — 2026-08-19
+
+- Restored the `LeaderboardSize` Sandbox option and kept ten-player pagination as the default.
+- Added permission-gated administrator score correction with structured before/after audit logging.
+- Added blocking Lua 5.1 syntax, Sandbox/config/translation parity, forbidden-artifact, version, package-parity, and protocol checks.
+- Added a clean release builder that creates the Workshop `Contents/mods/SurvivorLeagueCommunity` tree from canonical source.
+- Synchronized release version metadata across descriptors, Workshop notes, and validation.
+
 ## 1.6.0 — 2026-08-18
 
 - Consolidated Community and Meeks Protocol gameplay into one canonical Mod ID and Workshop item.
