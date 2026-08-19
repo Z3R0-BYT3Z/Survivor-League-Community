@@ -129,11 +129,17 @@ local function existingModData(key)
     return ok and value or nil
 end
 
+local function tableHasEntries(value)
+    if type(value) ~= "table" then return false end
+    for _ in pairs(value) do return true end
+    return false
+end
+
 local function activeDataset(value)
     if type(value) ~= "table" then return false end
-    if type(value.scores) == "table" and next(value.scores) ~= nil then return true end
-    if type(value.pending) == "table" and next(value.pending) ~= nil then return true end
-    if type(value.history) == "table" and next(value.history) ~= nil then return true end
+    if tableHasEntries(value.scores) then return true end
+    if tableHasEntries(value.pending) then return true end
+    if tableHasEntries(value.history) then return true end
     return value.seasonId ~= nil or value.startedAt ~= nil or value.endsAt ~= nil
 end
 
@@ -754,6 +760,60 @@ local function clampScore(value)
     return math.max(0, math.min(2147483647, math.floor(tonumber(value) or 0)))
 end
 
+local function recoverySnapshot(dataset)
+    local rows = {}
+    local scores = type(dataset) == "table" and dataset.scores or nil
+    if type(scores) ~= "table" then return rows end
+    for key, record in pairs(scores) do
+        record = type(record) == "table" and record or {}
+        rows[#rows + 1] = {
+            key = sanitizeName(key),
+            username = sanitizeName(record.username or key),
+            displayName = sanitizeName(record.displayName or record.username or key),
+            seasonKills = clampScore(record.kills),
+            totalKills = clampScore(record.totalKills or record.kills),
+            streakKills = clampScore(record.streakKills),
+            bestStreak = clampScore(record.bestStreak or record.streakKills),
+            lastVanillaKills = clampScore(record.lastVanillaKills),
+        }
+    end
+    table.sort(rows, function(a, b) return string.lower(a.key) < string.lower(b.key) end)
+    return rows
+end
+
+local function previewLegacyRecovery(actor)
+    local actorKey = actor and SL.playerKey(actor) or "server-console"
+    if actor and not isAdmin(actor) then
+        print("[SurvivorLeagueCommunityAudit] Unauthorized recovery preview rejected | actor=" .. tostring(actorKey))
+        return false, "not-authorized"
+    end
+    local canonicalRows = recoverySnapshot(existingModData(SL.DATA_KEY))
+    local legacyRows = recoverySnapshot(existingModData("SurvivorLeagueData"))
+    print("[SurvivorLeagueCommunityRecovery] BEGIN READ-ONLY EXPORT | actor=" .. tostring(actorKey)
+        .. " | canonicalRecords=" .. tostring(#canonicalRows)
+        .. " | legacyRecords=" .. tostring(#legacyRows))
+    local function emit(source, rows)
+        for _, row in ipairs(rows) do
+            print("[SurvivorLeagueCommunityRecovery] source=" .. source
+                .. " | key=" .. tostring(row.key)
+                .. " | username=" .. tostring(row.username)
+                .. " | displayName=" .. tostring(row.displayName)
+                .. " | season=" .. tostring(row.seasonKills)
+                .. " | total=" .. tostring(row.totalKills)
+                .. " | streak=" .. tostring(row.streakKills)
+                .. " | best=" .. tostring(row.bestStreak)
+                .. " | vanillaBaseline=" .. tostring(row.lastVanillaKills))
+        end
+    end
+    emit("canonical", canonicalRows)
+    emit("legacy", legacyRows)
+    print("[SurvivorLeagueCommunityRecovery] END READ-ONLY EXPORT | no scores changed")
+    return true, { canonical = #canonicalRows, legacy = #legacyRows }
+end
+
+SL.AdminAPI = SL.AdminAPI or {}
+SL.AdminAPI.previewLegacyRecovery = previewLegacyRecovery
+
 local function correctScore(actor, targetUsername, seasonKills, totalKills, streakKills, reason)
     local actorKey = actor and SL.playerKey(actor) or "server-console"
     if actor and not isAdmin(actor) then
@@ -898,6 +958,16 @@ local function onClientCommand(module, command, player, args)
         end
     end
     if command == "ReportKills" then observeReportedKills(player, args and args.kills) end
+    if command == "PreviewLegacyRecovery" then
+        local ok, result = previewLegacyRecovery(player)
+        sendServerCommand(player, SL.MODULE, "RecoveryPreviewResult", {
+            ok = ok,
+            reason = type(result) == "string" and result or nil,
+            canonical = type(result) == "table" and result.canonical or 0,
+            legacy = type(result) == "table" and result.legacy or 0,
+        })
+        return
+    end
     if command == "CorrectScore" then
         if not isAdmin(player) then
             print("[SurvivorLeagueCommunityAudit] Unauthorized score correction rejected | actor=" .. tostring(clientKey))

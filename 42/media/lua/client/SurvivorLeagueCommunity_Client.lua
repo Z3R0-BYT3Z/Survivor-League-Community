@@ -118,6 +118,18 @@ local function textWidth(value, font)
     return tonumber(width) or (#text * 7)
 end
 
+local function fontHeight(font)
+    local height = 18
+    pcall(function() height = getTextManager():getFontHeight(font or UIFont.Small) end)
+    return math.max(1, tonumber(height) or 18)
+end
+
+local function drawTextCenteredInBox(self, value, x, y, width, height, color, font)
+    font = font or UIFont.Small
+    local textY = y + math.floor((height - fontHeight(font)) / 2)
+    self:drawTextCentre(tostring(value or ""), x + (width / 2), textY, color[1], color[2], color[3], color[4] or 1, font)
+end
+
 local function fitText(value, maximumWidth, font)
     local text = tostring(value or "")
     maximumWidth = math.max(12, tonumber(maximumWidth) or 12)
@@ -171,6 +183,7 @@ function LeaderboardPanel:updateControls()
     if self.previousPage then self.previousPage:setVisible(ranking); self.previousPage.enable = self.currentPage > 1 end
     if self.nextPage then self.nextPage:setVisible(ranking); self.nextPage.enable = self.currentPage < self:getPageCount() end
     if self.settleButton then self.settleButton:setVisible(self.activeTab == "admin" and self.payload.isAdmin == true) end
+    if self.recoveryPreviewButton then self.recoveryPreviewButton:setVisible(self.activeTab == "admin" and self.payload.isAdmin == true) end
     for key, button in pairs(self.tabButtons or {}) do
         local selected = key == self.activeTab
         button.backgroundColor = selected and {r=C.panel[1],g=C.panel[2],b=C.panel[3],a=0.98} or {r=C.bg[1],g=C.bg[2],b=C.bg[3],a=0.65}
@@ -205,6 +218,11 @@ function LeaderboardPanel:onSettleSeason()
     self.settleArmedAt = nil
     self.settleButton:setTitle("SETTLE SEASON NOW")
     sendClientCommand(SL.MODULE, "SettleNow", {})
+end
+
+function LeaderboardPanel:onRecoveryPreview()
+    sendClientCommand(SL.MODULE, "PreviewLegacyRecovery", {})
+    self.recoveryPreviewButton:setTitle("EXPORT REQUESTED - CHECK SERVER LOG")
 end
 
 function LeaderboardPanel:onTab(button)
@@ -267,7 +285,8 @@ function LeaderboardPanel:createChildren()
     local leaderboardCenter = 20 + math.floor((self.width * 0.64) / 2)
     self.previousPage = self:addCommandButton(leaderboardCenter-72, self.height-150, 46, 28, "<", LeaderboardPanel.onPreviousPage)
     self.nextPage = self:addCommandButton(leaderboardCenter+26, self.height-150, 46, 28, ">", LeaderboardPanel.onNextPage)
-    self.settleButton = self:addCommandButton(math.floor((self.width-300)/2), 430, 300, 38, "SETTLE SEASON NOW", LeaderboardPanel.onSettleSeason)
+    self.recoveryPreviewButton = self:addCommandButton(math.floor((self.width-360)/2), 396, 360, 32, "EXPORT LEGACY/CURRENT SCORES", LeaderboardPanel.onRecoveryPreview)
+    self.settleButton = self:addCommandButton(math.floor((self.width-300)/2), 438, 300, 38, "SETTLE SEASON NOW", LeaderboardPanel.onSettleSeason)
     self:updateControls()
 end
 
@@ -309,7 +328,7 @@ function LeaderboardPanel:drawLeaderboard()
         local accent = rankColor(rank)
         self:drawRect(leftX+12,y,leftW-24,rowH-2,fill[4],fill[1],fill[2],fill[3])
         self:drawRectBorder(leftX+18,y+3,42,rowH-8,0.85,accent[1],accent[2],accent[3])
-        self:drawTextCentre(tostring(rank),leftX+39,y+5,accent[1],accent[2],accent[3],1,UIFont.Medium)
+        drawTextCenteredInBox(self,tostring(rank),leftX+18,y+3,42,rowH-8,accent,UIFont.Medium)
         self:drawText(fitText(row.displayName or row.username,155,UIFont.Medium),leftX+80,y+6,C.text[1],C.text[2],C.text[3],1,UIFont.Medium)
         self:drawTextRight(tostring(row.kills or 0),leftX+leftW-260,y+6,C.text[1],C.text[2],C.text[3],1,UIFont.Medium)
         self:drawTextRight(tostring(row.totalKills or 0),leftX+leftW-130,y+6,C.text[1],C.text[2],C.text[3],1,UIFont.Medium)
@@ -328,7 +347,7 @@ function LeaderboardPanel:drawLeaderboard()
         self:drawRect(rightX+16,y,rightW-32,76,0.84,C.rowB[1],C.rowB[2],C.rowB[3])
         self:drawRectBorder(rightX+16,y,rightW-32,76,0.85,accent[1],accent[2],accent[3])
         self:drawRectBorder(rightX+30,y+16,62,42,0.95,accent[1],accent[2],accent[3])
-        self:drawTextCentre(labels[place],rightX+61,y+25,accent[1],accent[2],accent[3],1,UIFont.Medium)
+        drawTextCenteredInBox(self,labels[place],rightX+30,y+16,62,42,accent,UIFont.Medium)
         self:drawText(fitText((self.payload.rewards or {})[place] or "No reward configured",rightW-132,UIFont.Small),rightX+106,y+27,C.text[1],C.text[2],C.text[3],1,UIFont.Small)
     end
 end
@@ -377,15 +396,15 @@ function LeaderboardPanel:drawRewards()
 end
 
 function LeaderboardPanel:drawAdmin()
-    local x,y,w,h=220,180,self.width-440,300
+    local x,y,w,h=220,154,self.width-440,340
     self:drawRect(x,y,w,h,0.78,C.panel[1],C.panel[2],C.panel[3]); self:drawRectBorder(x,y,w,h,0.9,C.line[1],C.line[2],C.line[3]); drawCorners(self,x,y,w,h,C.accent)
-    self:drawTextCentre("ADMINISTRATOR CONTROLS",self.width/2,y+28,C.text[1],C.text[2],C.text[3],1,UIFont.Medium)
-    self:drawTextCentre("Authorized access: moderator, overseer, or admin",self.width/2,y+62,0.30,0.90,0.55,1,UIFont.Small)
-    self:drawText("Season length",x+42,y+104,C.muted[1],C.muted[2],C.muted[3],1,UIFont.Small); self:drawTextRight(tostring(self.payload.seasonDays or 0).." days",x+w-42,y+104,C.text[1],C.text[2],C.text[3],1,UIFont.Small)
-    self:drawText("Podium qualification",x+42,y+130,C.muted[1],C.muted[2],C.muted[3],1,UIFont.Small); self:drawTextRight(tostring(self.payload.minimumKills or 0).." kills",x+w-42,y+130,C.text[1],C.text[2],C.text[3],1,UIFont.Small)
-    self:drawText("Registered survivors",x+42,y+156,C.muted[1],C.muted[2],C.muted[3],1,UIFont.Small); self:drawTextRight(tostring(self.payload.playerCount or #(self.payload.rows or {})),x+w-42,y+156,C.text[1],C.text[2],C.text[3],1,UIFont.Small)
-    self:drawTextCentre("SETTLE SEASON NOW queues eligible rewards and resets Season Kills.",self.width/2,y+210,C.muted[1],C.muted[2],C.muted[3],1,UIFont.Small)
-    self:drawTextCentre("Lifetime Total Kills and historical winners remain preserved.",self.width/2,y+234,C.muted[1],C.muted[2],C.muted[3],1,UIFont.Small)
+    self:drawTextCentre("ADMINISTRATOR CONTROLS",self.width/2,y+24,C.text[1],C.text[2],C.text[3],1,UIFont.Medium)
+    self:drawTextCentre("Authorized access: moderator, overseer, or admin",self.width/2,y+56,0.30,0.90,0.55,1,UIFont.Small)
+    self:drawText("Season length",x+42,y+94,C.muted[1],C.muted[2],C.muted[3],1,UIFont.Small); self:drawTextRight(tostring(self.payload.seasonDays or 0).." days",x+w-42,y+94,C.text[1],C.text[2],C.text[3],1,UIFont.Small)
+    self:drawText("Podium qualification",x+42,y+120,C.muted[1],C.muted[2],C.muted[3],1,UIFont.Small); self:drawTextRight(tostring(self.payload.minimumKills or 0).." kills",x+w-42,y+120,C.text[1],C.text[2],C.text[3],1,UIFont.Small)
+    self:drawText("Registered survivors",x+42,y+146,C.muted[1],C.muted[2],C.muted[3],1,UIFont.Small); self:drawTextRight(tostring(self.payload.playerCount or #(self.payload.rows or {})),x+w-42,y+146,C.text[1],C.text[2],C.text[3],1,UIFont.Small)
+    self:drawTextCentre("Recovery export is read-only and writes both datasets to the server log.",self.width/2,y+186,C.muted[1],C.muted[2],C.muted[3],1,UIFont.Small)
+    self:drawTextCentre("SETTLE SEASON resets Season Kills; lifetime totals remain preserved.",self.width/2,y+212,C.muted[1],C.muted[2],C.muted[3],1,UIFont.Small)
 end
 
 function LeaderboardPanel:drawYourStatsStrip()
@@ -469,6 +488,15 @@ local function onServerCommand(module, command, args)
         showJoinAnnouncement(args)
     elseif command == "DeathAnnouncement" then
         showDeathAnnouncement(args)
+    elseif command == "RecoveryPreviewResult" then
+        local message
+        if args and args.ok == true then
+            message = "Recovery export completed: "..tostring(args.canonical or 0).." current and "..tostring(args.legacy or 0).." legacy records. Check the server log."
+        else
+            message = "Recovery export failed: "..tostring(args and args.reason or "unknown error")
+        end
+        print("[SurvivorLeagueCommunityRecovery] "..message)
+        showServerChatMessage(message)
     elseif command == "PlayerReadyAck" then
         if tonumber(args and args.protocol) == SL.PROTOCOL_VERSION and tonumber(args and args.version) == SL.VERSION then
             protocolCompatible = true
