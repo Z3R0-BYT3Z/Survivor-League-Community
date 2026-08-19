@@ -299,7 +299,6 @@ function LeaderboardPanel:drawLeaderboard()
         self:drawRectBorder(leftX+18,y+3,42,rowH-8,0.85,accent[1],accent[2],accent[3])
         self:drawTextCentre(tostring(rank),leftX+39,y+5,accent[1],accent[2],accent[3],1,UIFont.Medium)
         self:drawText(fitText(row.displayName or row.username,155,UIFont.Medium),leftX+80,y+6,C.text[1],C.text[2],C.text[3],1,UIFont.Medium)
-        if mine then self:drawText("YOUR RANK",leftX+245,y+8,C.accent[1],C.accent[2],C.accent[3],1,UIFont.Small) end
         self:drawTextRight(tostring(row.kills or 0),leftX+leftW-260,y+6,C.text[1],C.text[2],C.text[3],1,UIFont.Medium)
         self:drawTextRight(tostring(row.totalKills or 0),leftX+leftW-130,y+6,C.text[1],C.text[2],C.text[3],1,UIFont.Medium)
         self:drawTextRight(tostring(row.streakKills or 0),leftX+leftW-18,y+6,C.text[1],C.text[2],C.text[3],1,UIFont.Medium)
@@ -389,7 +388,9 @@ function LeaderboardPanel:prerender()
     if self.activeTab=="leaderboard" then self:drawLeaderboard() elseif self.activeTab=="stats" then self:drawStats() elseif self.activeTab=="history" then self:drawHistory() elseif self.activeTab=="rewards" then self:drawRewards() else self:drawAdmin() end
     if self.activeTab=="leaderboard" then self:drawYourStatsStrip() end
     self:drawText("ONLINE",20,self.height-29,C.live[1],C.live[2],C.live[3],1,UIFont.Small)
-    self:drawTextRight("KEY "..tostring(SL.getOptions().interfaceKey).." TO CLOSE",self.width-24,self.height-29,C.muted[1],C.muted[2],C.muted[3],1,UIFont.Small)
+    local interfaceKey = SL.getOptions().interfaceKey
+    local closeText = interfaceKey == 64 and "F6 / X TO CLOSE" or ("KEY "..tostring(interfaceKey).." / X TO CLOSE")
+    self:drawTextRight(closeText,self.width-24,self.height-29,C.muted[1],C.muted[2],C.muted[3],1,UIFont.Small)
 end
 
 local function showBoard(payload)
@@ -489,6 +490,7 @@ local function onServerCommand(module, command, args)
 end
 
 local function reportPlayerReady(playerIndex, player)
+    if protocolCompatible or playerReadyPending then return end
     local p = player or (getSpecificPlayer and getSpecificPlayer(playerIndex)) or getPlayer()
     if not p then return end
     protocolCompatible = false
