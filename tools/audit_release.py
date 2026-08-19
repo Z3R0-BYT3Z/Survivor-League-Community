@@ -59,6 +59,12 @@ def main() -> None:
     if sent - handled: fail("Client commands without server handlers: " + ", ".join(sorted(sent-handled)))
     if "SurvivorLeagueCommunityScoreCorrection" not in server or "SL.AdminAPI.correctScore" not in server:
         fail("Audited administrator score correction is missing")
+    if "PreviewLegacyRecovery" not in server or "SurvivorLeagueCommunityRecovery" not in server:
+        fail("Read-only legacy recovery export is missing")
+    if "next(value.scores)" in server or "next(value.pending)" in server or "next(value.history)" in server:
+        fail("Kahlua-incompatible legacy dataset checks are present")
+    if "drawTextCenteredInBox" not in client:
+        fail("Font-measured box label centering is missing")
     if args.package:
         package = (ROOT / args.package).resolve() / "Contents/mods/SurvivorLeagueCommunity"
         compare_trees(ROOT / "42", package / "42")
