@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.7.1 — 2026-08-19
+
+- Replaced the unsupported Kahlua `next()` migration check with a guarded `pairs()` scan.
+- Added an administrator-only, read-only export of current and preserved legacy score datasets.
+- Added record counts and structured recovery lines without automatically changing or merging scores.
+- Added font-measured vertical centering for leaderboard rank and podium-place boxes.
+- Bumped the client/server compatibility version to 9.
+
 ## 1.7.0 — 2026-08-19
 
 - Restored the `LeaderboardSize` Sandbox option and kept ten-player pagination as the default.
