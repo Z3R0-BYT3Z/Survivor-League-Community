@@ -1,0 +1,37 @@
+name: Survivor League release audit
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Lua 5.1
+        run: sudo apt-get update && sudo apt-get install --yes lua5.1
+      - name: Block invalid Lua syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r -d '' file; do
+            echo "Checking $file"
+            luac5.1 -p "$file"
+          done < <(find 42/media/lua -type f -name '*.lua' -print0)
+      - name: Audit canonical source
+        run: python3 tools/audit_release.py
+      - name: Build clean Workshop package
+        run: python3 tools/build_release.py
+      - name: Audit package and source byte parity
+        run: python3 tools/audit_release.py --package dist/SurvivorLeagueCommunity-Workshop
+      - name: Upload audited Workshop package
+        uses: actions/upload-artifact@v4
+        with:
+          name: SurvivorLeagueCommunity-Workshop-v${{ hashFiles('VERSION') }}
+          path: dist/SurvivorLeagueCommunity-Workshop

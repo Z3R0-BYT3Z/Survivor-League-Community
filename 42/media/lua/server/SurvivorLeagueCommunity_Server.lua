@@ -750,6 +750,45 @@ local function isAdmin(player)
     return level == "admin" or level == "moderator" or level == "overseer"
 end
 
+local function clampScore(value)
+    return math.max(0, math.min(2147483647, math.floor(tonumber(value) or 0)))
+end
+
+local function correctScore(actor, targetUsername, seasonKills, totalKills, streakKills, reason)
+    local actorKey = actor and SL.playerKey(actor) or "server-console"
+    if actor and not isAdmin(actor) then
+        print("[SurvivorLeagueCommunityAudit] Unauthorized score correction rejected | actor=" .. tostring(actorKey))
+        return false, "not-authorized"
+    end
+    local target = sanitizeName(targetUsername)
+    local d = data()
+    local record = d.scores[target]
+    if not record then
+        print("[SurvivorLeagueCommunityAudit] Score correction rejected | actor=" .. tostring(actorKey) .. " | target=" .. tostring(target) .. " | reason=unknown-player")
+        return false, "unknown-player"
+    end
+    local beforeSeason = clampScore(record.kills)
+    local beforeTotal = clampScore(record.totalKills)
+    local beforeStreak = clampScore(record.streakKills)
+    local correctedSeason = clampScore(seasonKills)
+    local correctedTotal = math.max(correctedSeason, clampScore(totalKills))
+    local correctedStreak = math.min(correctedSeason, clampScore(streakKills))
+    record.kills = correctedSeason
+    record.totalKills = correctedTotal
+    record.streakKills = correctedStreak
+    record.bestStreak = math.max(clampScore(record.bestStreak), correctedStreak)
+    print("[SurvivorLeagueCommunityScoreCorrection] actor=" .. tostring(actorKey)
+        .. " | target=" .. tostring(target)
+        .. " | season=" .. tostring(beforeSeason) .. "->" .. tostring(correctedSeason)
+        .. " | total=" .. tostring(beforeTotal) .. "->" .. tostring(correctedTotal)
+        .. " | streak=" .. tostring(beforeStreak) .. "->" .. tostring(correctedStreak)
+        .. " | reason=" .. sanitizeName(reason or "manual correction"))
+    return true, record
+end
+
+SL.AdminAPI = SL.AdminAPI or {}
+SL.AdminAPI.correctScore = correctScore
+
 local function nextMilestoneFor(record, opts)
     local current = tonumber(record and record.streakKills) or 0
     local nextTier
@@ -859,6 +898,16 @@ local function onClientCommand(module, command, player, args)
         end
     end
     if command == "ReportKills" then observeReportedKills(player, args and args.kills) end
+    if command == "CorrectScore" then
+        if not isAdmin(player) then
+            print("[SurvivorLeagueCommunityAudit] Unauthorized score correction rejected | actor=" .. tostring(clientKey))
+        else
+            local ok, result = correctScore(player, args and args.username, args and args.seasonKills, args and args.totalKills, args and args.streakKills, args and args.reason)
+            sendServerCommand(player, SL.MODULE, "ScoreCorrectionResult", { ok = ok, reason = type(result) == "string" and result or nil, username = args and args.username })
+            if ok then sendBoard(player) end
+        end
+        return
+    end
     if command == "SettleNow" then
         if not isAdmin(player) then
             print("[SurvivorLeagueCommunityAudit] Unauthorized settlement rejected | user=" .. tostring(clientKey))

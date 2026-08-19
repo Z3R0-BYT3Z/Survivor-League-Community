@@ -1,1 +1,1 @@
-v1.6.0: unifies Community and Meeks Protocol through three selectable themes, custom branding, optional player cosmetic overrides, and guarded legacy standings/settings migration.
+v1.7.0: restores the LeaderboardSize Sandbox option, adds audited administrator score correction, and introduces blocking release validation plus reproducible Workshop packaging.
