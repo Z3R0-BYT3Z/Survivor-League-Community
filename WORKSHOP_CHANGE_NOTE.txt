@@ -1,1 +1,1 @@
-v1.7.0: restores the LeaderboardSize Sandbox option, adds audited administrator score correction, and introduces blocking release validation plus reproducible Workshop packaging.
+v1.7.1: fixes legacy score migration on Kahlua, adds a read-only current/legacy recovery export, and centers leaderboard rank and podium labels.
