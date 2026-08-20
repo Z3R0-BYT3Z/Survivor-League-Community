@@ -172,6 +172,26 @@ local function fitText(value, maximumWidth, font)
     return best ~= "" and best or suffix
 end
 
+local function wrapTwoLines(value, maximumWidth, font)
+    local text = tostring(value or "")
+    maximumWidth = math.max(12, tonumber(maximumWidth) or 12)
+    font = font or UIFont.Small
+    if textWidth(text, font) <= maximumWidth then return text, nil end
+
+    local words = {}
+    for word in text:gmatch("%S+") do words[#words + 1] = word end
+    local first, splitAt = "", 0
+    for index, word in ipairs(words) do
+        local candidate = first == "" and word or (first .. " " .. word)
+        if textWidth(candidate, font) > maximumWidth then break end
+        first, splitAt = candidate, index
+    end
+    if splitAt == 0 then return fitText(text, maximumWidth, font), nil end
+
+    local remainder = table.concat(words, " ", splitAt + 1)
+    return first, remainder ~= "" and fitText(remainder, maximumWidth, font) or nil
+end
+
 local function drawCorners(self, x, y, w, h, color)
     local r, g, b, a = color[1], color[2], color[3], color[4] or 1
     local n = 16
@@ -439,7 +459,10 @@ function LeaderboardPanel:drawLeaderboard()
         self:drawRectBorder(rightX+16,y,rightW-32,76,0.85,accent[1],accent[2],accent[3])
         self:drawRectBorder(rightX+30,y+16,62,42,0.95,accent[1],accent[2],accent[3])
         drawTextCenteredInBox(self,labels[place],rightX+30,y+16,62,42,accent,UIFont.Medium)
-        self:drawText(fitText((self.payload.rewards or {})[place] or "No reward configured",rightW-132,UIFont.Small),rightX+106,y+27,C.text[1],C.text[2],C.text[3],1,UIFont.Small)
+        local rewardLine1, rewardLine2 = wrapTwoLines((self.payload.rewards or {})[place] or "No reward configured",rightW-132,UIFont.Small)
+        local rewardTextY = rewardLine2 and (y+18) or (y+27)
+        self:drawText(rewardLine1,rightX+106,rewardTextY,C.text[1],C.text[2],C.text[3],1,UIFont.Small)
+        if rewardLine2 then self:drawText(rewardLine2,rightX+106,rewardTextY+fontHeight(UIFont.Small)+3,C.text[1],C.text[2],C.text[3],1,UIFont.Small) end
     end
 end
 
@@ -474,7 +497,14 @@ function LeaderboardPanel:drawRewards()
     self:drawRect(x,y,w,h,0.72,C.panel[1],C.panel[2],C.panel[3]); self:drawRectBorder(x,y,w,h,0.8,C.line[1],C.line[2],C.line[3]); drawCorners(self,x,y,w,h,C.accent)
     self:drawTextCentre("SEASON PODIUM REWARDS | MINIMUM "..tostring(self.payload.minimumKills or 0).." KILLS",self.width/2,y+20,C.text[1],C.text[2],C.text[3],1,UIFont.Medium)
     local labels={"1ST","2ND","3RD"}
-    for place=1,3 do local yy=y+54+((place-1)*72); local accent=rankColor(place); local rewardW=math.floor(w*0.43); self:drawRect(x+28,yy,rewardW,58,0.84,C.rowB[1],C.rowB[2],C.rowB[3]); self:drawRectBorder(x+28,yy,rewardW,58,0.9,accent[1],accent[2],accent[3]); self:drawText(labels[place],x+46,yy+18,accent[1],accent[2],accent[3],1,UIFont.Medium); self:drawText(fitText((self.payload.rewards or {})[place] or "No reward configured",rewardW-96,UIFont.Small),x+112,yy+20,C.text[1],C.text[2],C.text[3],1,UIFont.Small) end
+    for place=1,3 do
+        local yy=y+54+((place-1)*72); local accent=rankColor(place); local rewardW=math.floor(w*0.43)
+        self:drawRect(x+28,yy,rewardW,58,0.84,C.rowB[1],C.rowB[2],C.rowB[3]); self:drawRectBorder(x+28,yy,rewardW,58,0.9,accent[1],accent[2],accent[3]); self:drawText(labels[place],x+46,yy+18,accent[1],accent[2],accent[3],1,UIFont.Medium)
+        local rewardLine1, rewardLine2 = wrapTwoLines((self.payload.rewards or {})[place] or "No reward configured",rewardW-96,UIFont.Small)
+        local rewardTextY = rewardLine2 and (yy+10) or (yy+20)
+        self:drawText(rewardLine1,x+112,rewardTextY,C.text[1],C.text[2],C.text[3],1,UIFont.Small)
+        if rewardLine2 then self:drawText(rewardLine2,x+112,rewardTextY+fontHeight(UIFont.Small)+3,C.text[1],C.text[2],C.text[3],1,UIFont.Small) end
+    end
     local streakX=x+math.floor(w*0.48); self:drawText("KILL-STREAK REWARDS | ONCE PER LIFE",streakX,y+54,C.text[1],C.text[2],C.text[3],1,UIFont.Small)
     for i,reward in ipairs(self.payload.killStreakRewards or {}) do
         if i>5 then break end
