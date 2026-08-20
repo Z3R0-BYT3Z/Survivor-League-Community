@@ -1,6 +1,7 @@
 require "SurvivorLeagueCommunity_Config"
 require "ISUI/ISPanel"
 require "ISUI/ISButton"
+require "ISUI/ISTextEntryBox"
 
 local SL = SurvivorLeagueCommunity
 local panel
@@ -171,22 +172,6 @@ local function fitText(value, maximumWidth, font)
     return best ~= "" and best or suffix
 end
 
-local function wrapTwoLines(value, maximumWidth, font)
-    local text = tostring(value or "")
-    local words, first, second = {}, "", ""
-    for word in text:gmatch("%S+") do words[#words + 1] = word end
-    for _, word in ipairs(words) do
-        local candidate = first == "" and word or (first .. " " .. word)
-        if second == "" and textWidth(candidate, font) <= maximumWidth then
-            first = candidate
-        else
-            second = second == "" and word or (second .. " " .. word)
-        end
-    end
-    if first == "" then first = fitText(text, maximumWidth, font) end
-    return first, fitText(second, maximumWidth, font)
-end
-
 local function drawCorners(self, x, y, w, h, color)
     local r, g, b, a = color[1], color[2], color[3], color[4] or 1
     local n = 16
@@ -221,6 +206,9 @@ function LeaderboardPanel:updateControls()
     if self.nextPage then self.nextPage:setVisible(ranking); self.nextPage.enable = self.currentPage < self:getPageCount() end
     if self.settleButton then self.settleButton:setVisible(self.activeTab == "admin" and self.payload.isAdmin == true) end
     if self.recoveryPreviewButton then self.recoveryPreviewButton:setVisible(self.activeTab == "admin" and self.payload.isAdmin == true) end
+    for _, control in ipairs(self.adminControls or {}) do
+        control:setVisible(self.activeTab == "admin" and self.payload.isAdmin == true)
+    end
     for key, button in pairs(self.tabButtons or {}) do
         local selected = key == self.activeTab
         button.backgroundColor = selected and {r=C.panel[1],g=C.panel[2],b=C.panel[3],a=0.98} or {r=C.bg[1],g=C.bg[2],b=C.bg[3],a=0.65}
@@ -262,6 +250,19 @@ function LeaderboardPanel:onRecoveryPreview()
     self.recoveryPreviewButton:setTitle("EXPORT REQUESTED - CHECK SERVER LOG")
 end
 
+function LeaderboardPanel:onCorrectScore()
+    local username = self.adminUsername and self.adminUsername:getText() or ""
+    if username == "" then return end
+    SL.requestScoreCorrection(
+        username,
+        self.adminSeason and self.adminSeason:getText() or "0",
+        self.adminTotal and self.adminTotal:getText() or "0",
+        self.adminStreak and self.adminStreak:getText() or "0",
+        self.adminReason and self.adminReason:getText() or "in-game admin correction"
+    )
+    self.correctScoreButton:setTitle("CORRECTION REQUESTED")
+end
+
 function LeaderboardPanel:onTab(button)
     self.activeTab = tostring(button.internal or "leaderboard")
     self:updateControls()
@@ -293,10 +294,22 @@ function LeaderboardPanel:addCommandButton(x, y, w, h, title, callback)
     return button
 end
 
+function LeaderboardPanel:addAdminEntry(x, y, w, value, numeric)
+    local entry = ISTextEntryBox:new(tostring(value or ""), x, y, w, 28)
+    entry:initialise()
+    -- Build 42 may not create the Java text-entry object until the parent
+    -- panel is instantiated. Calling setOnlyNumbers here crashes refresh.
+    -- Numeric values are still normalized and validated before submission.
+    self:addChild(entry)
+    self.adminControls[#self.adminControls + 1] = entry
+    return entry
+end
+
 function LeaderboardPanel:createChildren()
     ISPanel.createChildren(self)
     self.commandButtons = {}
     self.tabButtons = {}
+    self.adminControls = {}
     local tabs = {
         {"leaderboard", "LEADERBOARD", 132},
         {"stats", "MY STATS", 120},
@@ -336,8 +349,22 @@ function LeaderboardPanel:createChildren()
     local leaderboardCenter = 20 + math.floor((self.width * 0.64) / 2)
     self.previousPage = self:addCommandButton(leaderboardCenter-72, self.height-150, 46, 28, "<", LeaderboardPanel.onPreviousPage)
     self.nextPage = self:addCommandButton(leaderboardCenter+26, self.height-150, 46, 28, ">", LeaderboardPanel.onNextPage)
-    self.recoveryPreviewButton = self:addCommandButton(math.floor((self.width-330)/2), 360, 330, 36, "PRINT SCORE SNAPSHOT", LeaderboardPanel.onRecoveryPreview)
-    self.settleButton = self:addCommandButton(math.floor((self.width-300)/2), 418, 300, 40, "SETTLE SEASON NOW", LeaderboardPanel.onSettleSeason)
+    local panelX, panelW = 220, self.width-440
+    local formX, formW, fieldGap = panelX+42, panelW-84, 10
+    local numericW = math.max(72, math.floor(formW*0.13))
+    local usernameW = formW-(numericW*3)-(fieldGap*3)
+    self.adminFormX, self.adminUsernameW, self.adminNumericW, self.adminFieldGap = formX, usernameW, numericW, fieldGap
+    self.adminUsername = self:addAdminEntry(formX, 350, usernameW, "", false)
+    self.adminSeason = self:addAdminEntry(formX+usernameW+fieldGap, 350, numericW, "0", true)
+    self.adminTotal = self:addAdminEntry(formX+usernameW+fieldGap+numericW+fieldGap, 350, numericW, "0", true)
+    self.adminStreak = self:addAdminEntry(formX+usernameW+fieldGap+numericW+fieldGap+numericW+fieldGap, 350, numericW, "0", true)
+    local actionW = 220
+    local reasonW = formW-actionW-fieldGap
+    self.adminReason = self:addAdminEntry(formX, 410, reasonW, "in-game admin correction", false)
+    self.correctScoreButton = self:addCommandButton(formX+reasonW+fieldGap, 410, actionW, 28, "APPLY SCORE CORRECTION", LeaderboardPanel.onCorrectScore)
+    self.adminControls[#self.adminControls + 1] = self.correctScoreButton
+    self.recoveryPreviewButton = self:addCommandButton(math.floor(self.width/2)-310, 466, 300, 34, "EXPORT LEGACY/CURRENT SCORES", LeaderboardPanel.onRecoveryPreview)
+    self.settleButton = self:addCommandButton(math.floor(self.width/2)+10, 466, 300, 34, "SETTLE SEASON NOW", LeaderboardPanel.onSettleSeason)
     self:updateControls()
 end
 
@@ -353,7 +380,7 @@ function LeaderboardPanel:drawHeader()
     self:drawText(fitText(string.upper(Appearance.title), 300, UIFont.Large), 20, 78, C.text[1],C.text[2],C.text[3],1,UIFont.Large)
     self:drawText(fitText(string.upper(Appearance.subtitle), 300, UIFont.Small), 22, 108, C.muted[1],C.muted[2],C.muted[3],1,UIFont.Small)
     self:drawTextRight("Season #"..tostring(self.payload.seasonId or "?"), self.width-24, 76, C.text[1],C.text[2],C.text[3],1,UIFont.Medium)
-    self:drawTextRight(fitText(countdown(self.payload), 190, UIFont.Small), self.width-24, 108, C.accent[1],C.accent[2],C.accent[3],1,UIFont.Small)
+    self:drawTextRight(fitText(countdown(self.payload), 190, UIFont.Small), self.width-24, 104, C.accent[1],C.accent[2],C.accent[3],1,UIFont.Small)
 end
 
 function LeaderboardPanel:drawLeaderboard()
@@ -368,47 +395,51 @@ function LeaderboardPanel:drawLeaderboard()
     local seasonX, seasonW = survivorX+survivorW, math.floor(leftW*0.18)
     local totalX, totalW = seasonX+seasonW, math.floor(leftW*0.18)
     local streakX, streakW = totalX+totalW, (leftX+leftW-12)-totalX-totalW
-    drawTextCenteredInBox(self,"RANK",rankX,top+8,rankW,28,C.muted,UIFont.Small)
-    self:drawText("SURVIVOR",survivorX+8,top+16,C.muted[1],C.muted[2],C.muted[3],1,UIFont.Small)
-    drawTextCenteredInBox(self,"SEASON",seasonX,top+8,seasonW,28,C.muted,UIFont.Small)
-    drawTextCenteredInBox(self,"TOTAL",totalX,top+8,totalW,28,C.muted,UIFont.Small)
-    drawTextCenteredInBox(self,"STREAK",streakX,top+8,streakW,28,C.muted,UIFont.Small)
+    self:drawTextCentre("RANK",rankX+(rankW/2),top+16,C.muted[1],C.muted[2],C.muted[3],1,UIFont.Small)
+    self:drawText("SURVIVOR",survivorX+6,top+16,C.muted[1],C.muted[2],C.muted[3],1,UIFont.Small)
+    self:drawTextCentre("SEASON",seasonX+(seasonW/2),top+16,C.muted[1],C.muted[2],C.muted[3],1,UIFont.Small)
+    self:drawTextCentre("TOTAL",totalX+(totalW/2),top+16,C.muted[1],C.muted[2],C.muted[3],1,UIFont.Small)
+    self:drawTextCentre("STREAK",streakX+(streakW/2),top+16,C.muted[1],C.muted[2],C.muted[3],1,UIFont.Small)
     self:drawRect(leftX+12,top+39,leftW-24,1,0.7,C.line[1],C.line[2],C.line[3])
     local rows = self.payload.rows or {}
     local firstRank = ((self.currentPage-1)*10)+1
     local lastRank = math.min(#rows, firstRank+9)
-    local rowH = math.max(31, fontHeight(UIFont.Medium) + 8)
+    local rowH = math.max(31, fontHeight(UIFont.Medium)+8)
     for rank=firstRank,lastRank do
         local visible = rank-firstRank
         local row, y = rows[rank], top+46+(visible*rowH)
         local mine = tostring(row.username or "") == tostring(self.payload.username or "")
-        local fill = mine and {C.accent[1]*0.24,C.accent[2]*0.24,C.accent[3]*0.24,0.96} or ((visible%2==0) and C.rowA or C.rowB)
+        -- Keep player highlighting neutral. Pink is reserved for borders,
+        -- rank markers, and active controls in the original Command Center UI.
+        local fill = mine and {0.095,0.095,0.112,0.98} or ((visible%2==0) and C.rowA or C.rowB)
         local accent = rankColor(rank)
         self:drawRect(leftX+12,y,leftW-24,rowH-2,fill[4],fill[1],fill[2],fill[3])
-        self:drawRectBorder(rankX+5,y+3,rankW-10,rowH-8,0.85,accent[1],accent[2],accent[3])
-        drawTextCenteredInBox(self,tostring(rank),rankX+5,y+3,rankW-10,rowH-8,accent,UIFont.Medium)
-        self:drawText(fitText(row.displayName or row.username,survivorW-16,UIFont.Medium),survivorX+8,y+math.floor((rowH-fontHeight(UIFont.Medium))/2),C.text[1],C.text[2],C.text[3],1,UIFont.Medium)
-        drawTextCenteredInBox(self,tostring(row.kills or 0),seasonX,y,seasonW,rowH-2,C.text,UIFont.Medium)
-        drawTextCenteredInBox(self,tostring(row.totalKills or 0),totalX,y,totalW,rowH-2,C.text,UIFont.Medium)
-        drawTextCenteredInBox(self,tostring(row.streakKills or 0),streakX,y,streakW,rowH-2,C.text,UIFont.Medium)
+        local rankBoxW = math.max(42, rankW-10)
+        self:drawRectBorder(rankX+5,y+3,rankBoxW,rowH-8,0.85,accent[1],accent[2],accent[3])
+        drawTextCenteredInBox(self,tostring(rank),rankX+5,y+3,rankBoxW,rowH-8,accent,UIFont.Medium)
+        self:drawText(fitText(row.displayName or row.username,survivorW-12,UIFont.Medium),survivorX+6,y+6,C.text[1],C.text[2],C.text[3],1,UIFont.Medium)
+        self:drawTextCentre(tostring(row.kills or 0),seasonX+(seasonW/2),y+6,C.text[1],C.text[2],C.text[3],1,UIFont.Medium)
+        self:drawTextCentre(tostring(row.totalKills or 0),totalX+(totalW/2),y+6,C.text[1],C.text[2],C.text[3],1,UIFont.Medium)
+        self:drawTextCentre(tostring(row.streakKills or 0),streakX+(streakW/2),y+6,C.text[1],C.text[2],C.text[3],1,UIFont.Medium)
     end
     self:drawTextCentre(tostring(self.currentPage).." / "..tostring(self:getPageCount()),leftX+(leftW/2),self.height-143,C.text[1],C.text[2],C.text[3],1,UIFont.Small)
     self:drawRect(rightX,top,rightW,bottom-top,0.72,C.panel[1],C.panel[2],C.panel[3])
     self:drawRectBorder(rightX,top,rightW,bottom-top,0.8,C.line[1],C.line[2],C.line[3])
     drawCorners(self,rightX,top,rightW,bottom-top,C.accent)
-    self:drawTextCentre("SEASON REWARDS",rightX+(rightW/2),top+16,C.text[1],C.text[2],C.text[3],1,UIFont.Small)
-    self:drawTextCentre("Minimum "..tostring(self.payload.minimumKills or 0).." kills to qualify",rightX+(rightW/2),top+38,C.muted[1],C.muted[2],C.muted[3],1,UIFont.Small)
-    self:drawRect(rightX+14,top+58,rightW-28,1,0.7,C.line[1],C.line[2],C.line[3])
+    local rewardTitleY = top+12
+    local rewardQualifierY = rewardTitleY+fontHeight(UIFont.Small)+7
+    local rewardDividerY = rewardQualifierY+fontHeight(UIFont.Small)+7
+    self:drawTextCentre("SEASON REWARDS",rightX+(rightW/2),rewardTitleY,C.text[1],C.text[2],C.text[3],1,UIFont.Small)
+    self:drawTextCentre(fitText("Minimum "..tostring(self.payload.minimumKills or 0).." kills to qualify",rightW-28,UIFont.Small),rightX+(rightW/2),rewardQualifierY,C.muted[1],C.muted[2],C.muted[3],1,UIFont.Small)
+    self:drawRect(rightX+14,rewardDividerY,rightW-28,1,0.7,C.line[1],C.line[2],C.line[3])
     local labels={"1ST","2ND","3RD"}
     for place=1,3 do
-        local y, accent = top+70+((place-1)*90), rankColor(place)
+        local y, accent = rewardDividerY+12+((place-1)*90), rankColor(place)
         self:drawRect(rightX+16,y,rightW-32,76,0.84,C.rowB[1],C.rowB[2],C.rowB[3])
         self:drawRectBorder(rightX+16,y,rightW-32,76,0.85,accent[1],accent[2],accent[3])
         self:drawRectBorder(rightX+30,y+16,62,42,0.95,accent[1],accent[2],accent[3])
         drawTextCenteredInBox(self,labels[place],rightX+30,y+16,62,42,accent,UIFont.Medium)
-        local line1,line2=wrapTwoLines((self.payload.rewards or {})[place] or "No reward configured",rightW-132,UIFont.Small)
-        self:drawText(line1,rightX+106,y+18,C.text[1],C.text[2],C.text[3],1,UIFont.Small)
-        if line2~="" then self:drawText(line2,rightX+106,y+42,C.text[1],C.text[2],C.text[3],1,UIFont.Small) end
+        self:drawText(fitText((self.payload.rewards or {})[place] or "No reward configured",rightW-132,UIFont.Small),rightX+106,y+27,C.text[1],C.text[2],C.text[3],1,UIFont.Small)
     end
 end
 
@@ -443,37 +474,39 @@ function LeaderboardPanel:drawRewards()
     self:drawRect(x,y,w,h,0.72,C.panel[1],C.panel[2],C.panel[3]); self:drawRectBorder(x,y,w,h,0.8,C.line[1],C.line[2],C.line[3]); drawCorners(self,x,y,w,h,C.accent)
     self:drawTextCentre("SEASON PODIUM REWARDS | MINIMUM "..tostring(self.payload.minimumKills or 0).." KILLS",self.width/2,y+20,C.text[1],C.text[2],C.text[3],1,UIFont.Medium)
     local labels={"1ST","2ND","3RD"}
-    for place=1,3 do
-        local yy=y+54+((place-1)*72); local accent=rankColor(place); local rewardW=math.floor(w*0.43)
-        self:drawRect(x+28,yy,rewardW,58,0.84,C.rowB[1],C.rowB[2],C.rowB[3]); self:drawRectBorder(x+28,yy,rewardW,58,0.9,accent[1],accent[2],accent[3])
-        drawTextCenteredInBox(self,labels[place],x+40,yy,64,58,accent,UIFont.Medium)
-        local line1,line2=wrapTwoLines((self.payload.rewards or {})[place] or "No reward configured",rewardW-96,UIFont.Small)
-        self:drawText(line1,x+112,yy+9,C.text[1],C.text[2],C.text[3],1,UIFont.Small)
-        if line2~="" then self:drawText(line2,x+112,yy+32,C.text[1],C.text[2],C.text[3],1,UIFont.Small) end
-    end
+    for place=1,3 do local yy=y+54+((place-1)*72); local accent=rankColor(place); local rewardW=math.floor(w*0.43); self:drawRect(x+28,yy,rewardW,58,0.84,C.rowB[1],C.rowB[2],C.rowB[3]); self:drawRectBorder(x+28,yy,rewardW,58,0.9,accent[1],accent[2],accent[3]); self:drawText(labels[place],x+46,yy+18,accent[1],accent[2],accent[3],1,UIFont.Medium); self:drawText(fitText((self.payload.rewards or {})[place] or "No reward configured",rewardW-96,UIFont.Small),x+112,yy+20,C.text[1],C.text[2],C.text[3],1,UIFont.Small) end
     local streakX=x+math.floor(w*0.48); self:drawText("KILL-STREAK REWARDS | ONCE PER LIFE",streakX,y+54,C.text[1],C.text[2],C.text[3],1,UIFont.Small)
     for i,reward in ipairs(self.payload.killStreakRewards or {}) do
         if i>5 then break end
         local yy=y+82+((i-1)*48); local enabled=reward.enabled==true
         self:drawRect(streakX,yy,w-math.floor(w*0.48)-24,40,0.78,C.rowB[1],C.rowB[2],C.rowB[3])
         self:drawRectBorder(streakX,yy,w-math.floor(w*0.48)-24,40,0.75,enabled and 0.30 or C.line[1],enabled and 0.90 or C.line[2],enabled and 0.55 or C.line[3])
-        local tierColor=enabled and {0.30,0.90,0.55,1} or C.muted
-        drawTextCenteredInBox(self,"TIER "..tostring(reward.tier or i).." | "..tostring(reward.kills or 0).." KILLS",streakX+10,yy,250,40,tierColor,UIFont.Small)
-        drawTextCenteredInBox(self,enabled and fitText(reward.summary,250,UIFont.Small) or "DISABLED",x+w-300,yy,264,40,C.text,UIFont.Small)
+        local textY=yy+math.max(3,math.floor((40-fontHeight(UIFont.Small))/2))
+        local tierText="TIER "..tostring(reward.tier or i).." | "..tostring(reward.kills or 0).." KILLS"
+        local summaryWidth=math.max(120,math.floor((w-math.floor(w*0.48)-24)*0.48))
+        self:drawText(fitText(tierText,260,UIFont.Small),streakX+12,textY,enabled and 0.30 or C.muted[1],enabled and 0.90 or C.muted[2],enabled and 0.55 or C.muted[3],1,UIFont.Small)
+        self:drawTextRight(enabled and fitText(reward.summary,summaryWidth,UIFont.Small) or "DISABLED",x+w-36,textY,C.text[1],C.text[2],C.text[3],1,UIFont.Small)
     end
 end
 
 function LeaderboardPanel:drawAdmin()
-    local x,y,w,h=220,154,self.width-440,330
+    local x,y,w,h=220,154,self.width-440,390
     self:drawRect(x,y,w,h,0.78,C.panel[1],C.panel[2],C.panel[3]); self:drawRectBorder(x,y,w,h,0.9,C.line[1],C.line[2],C.line[3]); drawCorners(self,x,y,w,h,C.accent)
     self:drawTextCentre("ADMINISTRATOR CONTROLS",self.width/2,y+24,C.text[1],C.text[2],C.text[3],1,UIFont.Medium)
-    self:drawTextCentre("Authorized access: moderator, overseer, or admin",self.width/2,y+56,0.30,0.90,0.55,1,UIFont.Small)
+    self:drawTextCentre("Authorized access: administrator only",self.width/2,y+56,0.30,0.90,0.55,1,UIFont.Small)
     self:drawText("Season length",x+42,y+94,C.muted[1],C.muted[2],C.muted[3],1,UIFont.Small); self:drawTextRight(tostring(self.payload.seasonDays or 0).." days",x+w-42,y+94,C.text[1],C.text[2],C.text[3],1,UIFont.Small)
     self:drawText("Podium qualification",x+42,y+120,C.muted[1],C.muted[2],C.muted[3],1,UIFont.Small); self:drawTextRight(tostring(self.payload.minimumKills or 0).." kills",x+w-42,y+120,C.text[1],C.text[2],C.text[3],1,UIFont.Small)
     self:drawText("Registered survivors",x+42,y+146,C.muted[1],C.muted[2],C.muted[3],1,UIFont.Small); self:drawTextRight(tostring(self.payload.playerCount or #(self.payload.rows or {})),x+w-42,y+146,C.text[1],C.text[2],C.text[3],1,UIFont.Small)
-    self:drawTextCentre("PRINT SCORE SNAPSHOT writes current and legacy records to the server log.",self.width/2,y+190,C.muted[1],C.muted[2],C.muted[3],1,UIFont.Small)
-    self:drawTextCentre("SETTLE SEASON requires a second confirmation and resets Season Kills only.",self.width/2,y+218,C.muted[1],C.muted[2],C.muted[3],1,UIFont.Small)
-    self:drawTextCentre("Lifetime totals, best streaks, history, and pending rewards remain preserved.",self.width/2,y+246,C.muted[1],C.muted[2],C.muted[3],1,UIFont.Small)
+    local formX=self.adminFormX or x+42
+    local usernameW=self.adminUsernameW or 220
+    local numericW=self.adminNumericW or 82
+    local gap=self.adminFieldGap or 10
+    self:drawText("ACCOUNT USERNAME",formX,328,C.muted[1],C.muted[2],C.muted[3],1,UIFont.Small)
+    self:drawText("SEASON",formX+usernameW+gap,328,C.muted[1],C.muted[2],C.muted[3],1,UIFont.Small)
+    self:drawText("TOTAL",formX+usernameW+gap+numericW+gap,328,C.muted[1],C.muted[2],C.muted[3],1,UIFont.Small)
+    self:drawText("STREAK",formX+usernameW+gap+numericW+gap+numericW+gap,328,C.muted[1],C.muted[2],C.muted[3],1,UIFont.Small)
+    self:drawText("AUDIT REASON",formX,388,C.muted[1],C.muted[2],C.muted[3],1,UIFont.Small)
+    self:drawTextCentre("Recovery export is read-only; settling resets season kills but preserves lifetime totals.",self.width/2,516,C.muted[1],C.muted[2],C.muted[3],1,UIFont.Small)
 end
 
 function LeaderboardPanel:drawYourStatsStrip()
@@ -487,10 +520,10 @@ function LeaderboardPanel:prerender()
     self:drawHeader()
     if self.activeTab=="leaderboard" then self:drawLeaderboard() elseif self.activeTab=="stats" then self:drawStats() elseif self.activeTab=="history" then self:drawHistory() elseif self.activeTab=="rewards" then self:drawRewards() else self:drawAdmin() end
     if self.activeTab=="leaderboard" then self:drawYourStatsStrip() end
-    self:drawText("ONLINE",20,self.height-36,C.live[1],C.live[2],C.live[3],1,UIFont.Small)
+    self:drawText("ONLINE",20,self.height-29,C.live[1],C.live[2],C.live[3],1,UIFont.Small)
     local interfaceKey = SL.getOptions().interfaceKey
     local closeText = interfaceKey == 64 and "F6 / X TO CLOSE" or ("KEY "..tostring(interfaceKey).." / X TO CLOSE")
-    self:drawTextRight(closeText,self.width-24,self.height-36,C.muted[1],C.muted[2],C.muted[3],1,UIFont.Small)
+    self:drawTextRight(closeText,self.width-24,self.height-29,C.muted[1],C.muted[2],C.muted[3],1,UIFont.Small)
 end
 
 local function showBoard(payload)
@@ -576,36 +609,35 @@ local function onServerCommand(module, command, args)
         if args and args.accepted == true then
             lastAcknowledgedKills = acknowledged
             if pendingReportedKills == acknowledged then pendingReportedKills = nil end
+        else
+            lastReportedKills = -1
         end
-        -- A rejected report remains pending and is retried after the client
-        -- interval instead of being silently forgotten.
-        if args and args.accepted ~= true then lastReportedKills = -1 end
     elseif command == "ProtocolMismatch" then
         protocolCompatible = false
         playerReadyPending = false
-        if getPlayer() then getPlayer():Say("Survivor League client/server versions do not match. Update the mod before using the Command Center.") end
-    elseif command == "MilestoneReward" and getPlayer() then
-        getPlayer():Say(
+        showServerChatMessage("Survivor League client/server versions do not match. Update the mod before using the Command Center.")
+    elseif command == "MilestoneReward" then
+        showServerChatMessage(
             "Kill-streak reward received: tier #"
                 .. tostring(args.tier)
                 .. " at "
                 .. tostring(args.threshold)
                 .. " kills"
         )
-    elseif command == "RewardGranted" and getPlayer() then
-        getPlayer():Say(
+    elseif command == "RewardGranted" then
+        showServerChatMessage(
             "Survivor League reward received: place #"
                 .. tostring(args.place)
         )
-    elseif command == "ScoreCorrectionResult" and getPlayer() then
-        getPlayer():Say(args and args.ok and ("Survivor League score corrected for "..tostring(args.username)) or ("Score correction failed: "..tostring(args and args.reason or "unknown")))
+    elseif command == "ScoreCorrectionResult" then
+        showServerChatMessage(args and args.ok and ("Survivor League score corrected for "..tostring(args.username)) or ("Score correction failed: "..tostring(args and args.reason or "unknown")))
     elseif command == "ScoreReset"
         and getPlayer()
         and args.username == SL.playerKey(getPlayer())
     then
-        getPlayer():Say("Kill streak reset on death. Season and total kills preserved.")
-    elseif command == "SeasonSettled" and getPlayer() then
-        getPlayer():Say("Survivor League season settled. A new season has begun.")
+        showServerChatMessage("Kill streak reset on death. Season and total kills preserved.")
+    elseif command == "SeasonSettled" then
+        showServerChatMessage("Survivor League season settled. A new season has begun.")
     end
 end
 

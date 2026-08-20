@@ -39,7 +39,7 @@ end
 
 local function radioEvent(kind, text, source)
     if MeeksRadio and MeeksRadio.ServerAPI and MeeksRadio.ServerAPI.broadcast then
-        pcall(MeeksRadio.ServerAPI.broadcast, 102800, kind, text, source or "SurvivorLeagueCommunity")
+        pcall(MeeksRadio.ServerAPI.broadcast, 101200, kind, text, source or "SurvivorLeagueCommunity")
     end
 end
 
@@ -837,7 +837,7 @@ end
 
 local function isAdmin(player)
     local level = tostring(player and player:getAccessLevel() or ""):lower()
-    return level == "admin" or level == "moderator" or level == "overseer"
+    return level == "admin"
 end
 
 local function clampScore(value)

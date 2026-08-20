@@ -1,12 +1,12 @@
 SurvivorLeagueCommunity = SurvivorLeagueCommunity or {}
 SurvivorLeagueCommunity.MODULE = "SurvivorLeagueCommunity"
 SurvivorLeagueCommunity.DATA_KEY = "SurvivorLeagueCommunityData"
-SurvivorLeagueCommunity.VERSION = 11
+SurvivorLeagueCommunity.VERSION = 12
 SurvivorLeagueCommunity.PROTOCOL_VERSION = 4
 
 SurvivorLeagueCommunity.THEMES = {
     [1] = { id="ProjectZomboid", title="SURVIVOR LEAGUE", bg={0.035,0.035,0.045,0.97}, panel={0.065,0.065,0.080,0.96}, rowA={0.085,0.085,0.100,0.92}, rowB={0.055,0.055,0.068,0.92}, accent={0.92,0.92,0.92,1.0}, silver={0.77,0.79,0.82,1.0}, bronze={0.77,0.48,0.27,1.0}, text={0.92,0.92,0.95,1.0}, muted={0.58,0.59,0.64,1.0}, line={0.20,0.20,0.24,0.85}, live={0.30,0.90,0.55,1.0} },
-    [2] = { id="MeeksProtocol", title="MEEKS PROTOCOL", bg={0.031,0.035,0.055,0.98}, panel={0.047,0.051,0.075,0.97}, rowA={0.082,0.041,0.071,0.94}, rowB={0.047,0.051,0.075,0.94}, accent={0.878,0.220,0.659,1.0}, bright={0.973,0.157,0.753,1.0}, silver={0.973,0.690,0.860,1.0}, bronze={0.86,0.49,0.20,1.0}, text={0.94,0.94,0.97,1.0}, muted={0.64,0.61,0.69,1.0}, line={0.290,0.090,0.231,0.92}, live={0.400,0.898,0.545,1.0} },
+    [2] = { id="MeeksProtocol", title="MEEKS PROTOCOL", bg={0.020,0.020,0.026,0.98}, panel={0.040,0.040,0.050,0.97}, rowA={0.065,0.065,0.078,0.96}, rowB={0.038,0.038,0.048,0.96}, accent={1.00,0.05,0.55,1.0}, silver={0.77,0.79,0.82,1.0}, bronze={0.86,0.49,0.20,1.0}, text={0.92,0.92,0.95,1.0}, muted={0.58,0.59,0.64,1.0}, line={0.18,0.18,0.22,0.90}, live={0.30,0.90,0.55,1.0} },
     [3] = { id="Military", title="SURVIVOR LEAGUE", bg={0.035,0.045,0.025,0.97}, panel={0.075,0.085,0.050,0.96}, rowA={0.105,0.115,0.070,0.94}, rowB={0.060,0.070,0.040,0.94}, accent={0.48,0.62,0.25,1.0}, silver={0.72,0.74,0.64,1.0}, bronze={0.62,0.47,0.24,1.0}, text={0.83,0.82,0.67,1.0}, muted={0.53,0.55,0.43,1.0}, line={0.24,0.30,0.14,0.90}, live={0.56,0.72,0.30,1.0} },
 }
 
@@ -139,12 +139,26 @@ function SurvivorLeagueCommunity.getOptions()
 
     -- Kill-streak rewards are independent from seasonal podium rewards.
     -- Each tier can be claimed once per survivor life and resets on death.
+    local function killTier(id, enabled, kills, items, xp, xpPerk, defaultKills)
+        local configuredItems = cleanSandboxString(items) or ""
+        local configuredXP = math.max(0, tonumber(xp) or 0)
+        local hasReward = configuredItems ~= "" or configuredXP > 0
+        return {
+            id = id,
+            enabled = enabled ~= false and hasReward,
+            kills = math.max(1, tonumber(kills) or defaultKills),
+            items = configuredItems,
+            xp = configuredXP,
+            xpPerk = cleanSandboxString(xpPerk) or "Sprinting",
+        }
+    end
+
     options.killStreakRewards = {
-        { id = 1, enabled = root.KillTier1Enabled ~= false, kills = math.max(1, tonumber(root.KillTier1Kills) or 100), items = cleanSandboxString(root.KillTier1Items) or "", xp = math.max(0, tonumber(root.KillTier1XP) or 0), xpPerk = cleanSandboxString(root.KillTier1XPPerk) or "Sprinting" },
-        { id = 2, enabled = root.KillTier2Enabled ~= false, kills = math.max(1, tonumber(root.KillTier2Kills) or 250), items = cleanSandboxString(root.KillTier2Items) or "", xp = math.max(0, tonumber(root.KillTier2XP) or 0), xpPerk = cleanSandboxString(root.KillTier2XPPerk) or "Sprinting" },
-        { id = 3, enabled = root.KillTier3Enabled ~= false, kills = math.max(1, tonumber(root.KillTier3Kills) or 500), items = cleanSandboxString(root.KillTier3Items) or "", xp = math.max(0, tonumber(root.KillTier3XP) or 0), xpPerk = cleanSandboxString(root.KillTier3XPPerk) or "Sprinting" },
-        { id = 4, enabled = root.KillTier4Enabled ~= false, kills = math.max(1, tonumber(root.KillTier4Kills) or 750), items = cleanSandboxString(root.KillTier4Items) or "", xp = math.max(0, tonumber(root.KillTier4XP) or 0), xpPerk = cleanSandboxString(root.KillTier4XPPerk) or "Sprinting" },
-        { id = 5, enabled = root.KillTier5Enabled ~= false, kills = math.max(1, tonumber(root.KillTier5Kills) or 1000), items = cleanSandboxString(root.KillTier5Items) or "", xp = math.max(0, tonumber(root.KillTier5XP) or 0), xpPerk = cleanSandboxString(root.KillTier5XPPerk) or "Sprinting" },
+        killTier(1, root.KillTier1Enabled, root.KillTier1Kills, root.KillTier1Items, root.KillTier1XP, root.KillTier1XPPerk, 100),
+        killTier(2, root.KillTier2Enabled, root.KillTier2Kills, root.KillTier2Items, root.KillTier2XP, root.KillTier2XPPerk, 250),
+        killTier(3, root.KillTier3Enabled, root.KillTier3Kills, root.KillTier3Items, root.KillTier3XP, root.KillTier3XPPerk, 500),
+        killTier(4, root.KillTier4Enabled, root.KillTier4Kills, root.KillTier4Items, root.KillTier4XP, root.KillTier4XPPerk, 750),
+        killTier(5, root.KillTier5Enabled, root.KillTier5Kills, root.KillTier5Items, root.KillTier5XP, root.KillTier5XPPerk, 1000),
     }
 
     return options
