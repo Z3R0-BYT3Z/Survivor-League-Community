@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.8.1 — 2026-08-20
+
+- Replaced player speech delivery for protocol, reward, score, streak-reset, and settlement notices with server/system messages.
+- Restricted the Admin tab and protected administrative commands to the Project Zomboid Admin access level.
+- Automatically disabled kill-streak tiers that contain no items and zero XP.
+- Synchronized root and Build 42 manifests, declared Build 42.20 compatibility, and strengthened mixed-version detection.
+- Updated permissions, upgrade notes, and release documentation.
+
 ## 1.7.5 — 2026-08-19
 
 - Removed the unstable in-game text-entry score-correction form that caused Admin-tab errors and severe font overlap.

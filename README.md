@@ -11,20 +11,22 @@ Survivor League is the unified, open-source Project Zomboid Build 42 multiplayer
 - **Death announcements:** Optional server-wide notices can include survival time, Season Kills, Total Kills, and a custom prefix. Server chat and above-player halo delivery can be controlled separately; chat is enabled and halos are disabled by default.
 - **Randomized join announcements:** Welcome connecting players with up to 20 admin-editable messages. `{name}` automatically inserts the player's name; prefix, cooldown, and enable/disable controls are available through Sandbox Options.
 - **Build 42 chat compatibility:** Announcement rendering explicitly binds the current chat API and falls back to an on-screen notice when necessary.
+- **System-delivered status notices:** Protocol, reward, correction, streak-reset, and settlement notices appear as server/system messages instead of making the player's character speak.
 - **Server-first synchronization:** Dedicated servers track kills from the server player object. An optional hosted/co-op client fallback is disabled by default and protected by configurable time-based rate limits.
 - **Verified death fallback:** Optional client death reports are accepted only when the server confirms that the player is dead.
 - **Master enable control:** Disabling the mod now stops tracking, commands, rewards, join notices, death notices, and leaderboard requests consistently.
 - **Protocol verification:** Clients must complete an exact protocol and release handshake before gameplay or administrative commands are accepted.
 - **UTF-8-safe names:** Multibyte player and character names are sanitized and truncated only at valid character boundaries.
-- **Three interface themes:** Meeks Protocol pink is the default. Server owners can choose Project Zomboid or Military styling through Sandbox Options, with optional cosmetic player overrides.
+- **Three interface themes:** Choose Project Zomboid, Meeks Protocol, or Military styling through Sandbox Options, with optional cosmetic player overrides.
 - **White-label branding:** Configure the Command Center title and subtitle without maintaining a separate build.
 - **Guarded legacy migration:** Empty Community datasets can import the former `SurvivorLeagueData` table without deleting it. Populated datasets are never merged automatically.
-- **Audited score correction:** Authorized administrators can correct stored season, lifetime, and streak totals through the server-authoritative `SurvivorLeagueCommunity.AdminAPI.correctScore` function; every change records actor, target, before/after values, and reason.
 - **Relay-ready logging:** Structured `[SurvivorLeagueKill]`, `[SurvivorLeagueDeath]`, and `[SurvivorLeagueCommunityJoin]` markers can be consumed by optional Discord or website relays.
 
 ## Configuration
 
 All supported server-owner settings are available through Project Zomboid's native Sandbox Options. Admins do not need to edit Lua files to change seasons, rewards, death notices, or join messages.
+
+Kill-streak tiers with no configured items and zero XP are treated as disabled, even when their enable checkbox is selected. This prevents empty reward grants and misleading reward notifications.
 
 Blank join-message slots are ignored. Use `{name}` anywhere the connecting player's display name should appear.
 
@@ -32,13 +34,23 @@ Dedicated servers should leave **Allow hosted/co-op client kill-report fallback*
 
 Season expiry is checked when the server starts, once per minute, and during normal player polling. A settlement guard prevents overlapping timer or admin requests from issuing duplicate podium rewards.
 
-**Season Kills are cumulative for the active season.** Death resets only Current Streak and its once-per-life milestone claims. Total Kills and Best Streak remain persistent. The visible `LeaderboardSize` option is retained only for saved-preset compatibility; the Command Center always paginates all registered scores at 10 players per page.
+**Season Kills are cumulative for the active season.** Death resets only Current Streak and its once-per-life milestone claims. Total Kills and Best Streak remain persistent. The legacy `LeaderboardSize` value is still read from saved presets for compatibility, but the option is hidden and the Command Center always paginates all registered scores at 10 players per page.
 
 Leaderboard requests are throttled on both client and server, and player names are sanitized and length-limited before being sent to the interface. Verified client death reports are disabled by default and should only be enabled for hosted/co-op sessions that miss native death events.
 
 The Command Center key defaults to Project Zomboid key code `64` (F6). Set **Command Center key code** to another valid key code to rebind it. Server logs include structured protocol decisions, automatic-settlement triggers, admin settlement requests, rejected unauthorized settlement attempts, and settlement completion summaries.
 
 See `ARCHITECTURE.md` and `MIGRATION.md` for the unified runtime and legacy Meeks transition procedure.
+
+## Administrative permissions
+
+Version 1.8.1 restricts the Admin tab and its score-correction, recovery-export, and forced-settlement commands to Project Zomboid's `Admin` access level. Moderator and Overseer accounts use the normal read-only player interface. Every protected command is authorized by the server; hiding the Admin tab is not the security boundary.
+
+Granular permissions and a separate read-only moderator status panel are planned for a later feature release.
+
+## Updating from 1.8.0
+
+Replace both the client and server copies with the complete 1.8.1 package, then restart Project Zomboid and the server. Mixed 1.8.0/1.8.1 installations are intentionally rejected by the version handshake. Existing standings, season history, and Sandbox settings remain compatible.
 
 ## Installation
 
@@ -49,7 +61,7 @@ See `ARCHITECTURE.md` and `MIGRATION.md` for the unified runtime and legacy Meek
 
 - Workshop ID: `3784151798`
 - Mod ID: `SurvivorLeagueCommunity`
-- Build: Project Zomboid 42.15+
+- Build: Project Zomboid 42.20+
 
 ## License and credits
 

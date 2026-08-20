@@ -1,1 +1,7 @@
-v1.7.5: removes the unstable Admin score-entry form, fixes Admin-tab errors and overlap, and retains the matching Radio Frequencies palette plus all stabilization fixes.
+v1.8.1 - Release hardening
+
+- Corrected protocol, reward, score, streak-reset, and settlement notifications so they appear as server/system messages instead of player speech.
+- Restricted the Admin tab and protected administrative commands to the Project Zomboid Admin access level.
+- Empty kill-streak reward tiers now display as disabled and cannot issue misleading empty grants.
+- Synchronized both manifests and strengthened mixed-version detection.
+- Updated Build 42.20 compatibility, permissions, upgrade notes, and release documentation.

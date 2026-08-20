@@ -1,4 +1,4 @@
-VERSION = 2,
+VERSION = 1,
 
 option SurvivorLeagueCommunity.JoinAnnouncements { type = boolean, default = true, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_JoinAnnouncements, }
 option SurvivorLeagueCommunity.JoinPrefix { type = string, default = SURVIVOR LEAGUE, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_JoinPrefix, }
