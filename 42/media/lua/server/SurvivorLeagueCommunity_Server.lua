@@ -5,7 +5,6 @@ require "SurvivorLeagueCommunity_Config"
 
 local SL = SurvivorLeagueCommunity
 local runtime = {}
-local pollTicks = 0
 local announceDeath
 local announceKills
 local hoursSurvived
@@ -15,6 +14,8 @@ local clientKillReportTimes = {}
 local clientDeathReportTimes = {}
 local leaderboardRequestTimes = {}
 local compatibleClients = {}
+local serverPollTicks = {}
+local invalidRewardTokensLogged = {}
 
 local function utf8Prefix(value, maximumCharacters)
     local text, index, count, last = tostring(value or ""), 1, 0, 0
@@ -38,7 +39,7 @@ end
 
 local function radioEvent(kind, text, source)
     if MeeksRadio and MeeksRadio.ServerAPI and MeeksRadio.ServerAPI.broadcast then
-        pcall(MeeksRadio.ServerAPI.broadcast, 101200, kind, text, source or "SurvivorLeagueCommunity")
+        pcall(MeeksRadio.ServerAPI.broadcast, 102800, kind, text, source or "SurvivorLeagueCommunity")
     end
 end
 
@@ -256,7 +257,7 @@ local function sortedScores()
     return rows
 end
 
-local function parseItems(spec, maximumCount)
+local function parseItems(spec, maximumCount, context)
     local items = {}
     local limit = math.max(1, tonumber(maximumCount) or 100)
     for token in string.gmatch(tostring(spec or ""), "[^,;]+") do
@@ -267,6 +268,14 @@ local function parseItems(spec, maximumCount)
                 print("[SurvivorLeagueCommunityWarning] Clamped reward quantity for " .. tostring(itemType) .. " from " .. tostring(requested) .. " to " .. tostring(limit))
             end
             items[#items + 1] = { itemType = itemType, count = math.min(requested, limit) }
+        else
+            local invalid = tostring(token or ""):match("^%s*(.-)%s*$") or ""
+            local warningKey = tostring(context or "reward") .. "|" .. invalid
+            if invalid ~= "" and not invalidRewardTokensLogged[warningKey] then
+                invalidRewardTokensLogged[warningKey] = true
+                print("[SurvivorLeagueRewardError] Ignored malformed item token '" .. invalid
+                    .. "' in " .. tostring(context or "reward") .. "; expected Module.Item:quantity")
+            end
         end
     end
     return items
@@ -329,14 +338,13 @@ local function grantXP(player, perkName, amount, context)
     return ok
 end
 
-local function queueWinner(row, place, opts)
-    local d = data()
-    d.pending[row.username] = d.pending[row.username] or {}
-    d.pending[row.username][#d.pending[row.username] + 1] = {
-        seasonId = d.seasonId,
+local function winnerReward(row, place, opts, seasonId)
+    return {
+        rewardId = "season:" .. tostring(seasonId) .. ":place:" .. tostring(place),
+        seasonId = seasonId,
         place = place,
         kills = row.kills,
-        items = parseItems(opts.items[place], opts.maximumRewardItemCount),
+        items = parseItems(opts.items[place], opts.maximumRewardItemCount, "season "..tostring(seasonId).." place "..tostring(place)),
         xp = opts.xp[place] or 0,
         xpPerk = opts.xpPerk,
         addTrait = opts.addTrait[place] or "",
@@ -344,24 +352,45 @@ local function queueWinner(row, place, opts)
     }
 end
 
+local function queueWinner(d, row, place, reward)
+    d.pending[row.username] = d.pending[row.username] or {}
+    for _, existing in ipairs(d.pending[row.username]) do
+        if existing.rewardId == reward.rewardId then return end
+    end
+    d.pending[row.username][#d.pending[row.username] + 1] = reward
+end
+
 local function settleSeason(reason, actor)
     local d = data()
     local opts = SL.getOptions()
     local rows = sortedScores()
     local winners = {}
+    local rewards = {}
+    local settlingSeason = d.seasonId
     print("[SurvivorLeagueCommunityAudit] Settlement started | season=" .. tostring(d.seasonId) .. " | reason=" .. tostring(reason or "timer") .. " | actor=" .. tostring(actor or "server") .. " | registered=" .. tostring(#rows))
     for place = 1, math.min(3, #rows) do
         if rows[place].kills >= opts.minimumKills then
-            queueWinner(rows[place], place, opts)
             winners[#winners + 1] = rows[place]
+            rewards[#rewards + 1] = { row = rows[place], place = place,
+                reward = winnerReward(rows[place], place, opts, settlingSeason) }
         end
     end
-    d.history[#d.history + 1] = { seasonId = d.seasonId, startedAt = d.startedAt, endedAt = SL.now(), winners = winners }
+    -- Persist an idempotent marker before mutating rewards/history. A retry
+    -- after an interrupted save reuses stable reward IDs instead of duplicating them.
+    d.settlementInProgress = settlingSeason
+    ModData.transmit(SL.DATA_KEY)
+    for _, queued in ipairs(rewards) do queueWinner(d, queued.row, queued.place, queued.reward) end
+    for index = #d.history, 1, -1 do
+        if tonumber(d.history[index].seasonId) == tonumber(settlingSeason) then table.remove(d.history, index) end
+    end
+    d.history[#d.history + 1] = { seasonId = settlingSeason, startedAt = d.startedAt, endedAt = SL.now(), winners = winners }
     while #d.history > 12 do table.remove(d.history, 1) end
     d.seasonId = d.seasonId + 1
     d.startedAt = SL.now()
     d.endsAt = d.startedAt + opts.seasonDays * 86400
     for _, record in pairs(d.scores) do record.kills = 0 end
+    d.lastSettledSeason = settlingSeason
+    d.settlementInProgress = nil
     runtime = {}
     ModData.transmit(SL.DATA_KEY)
     print("[SurvivorLeagueSeason] Settled Season #" .. tostring(d.seasonId - 1) .. "; Season #" .. tostring(d.seasonId) .. " ends at " .. tostring(d.endsAt))
@@ -424,10 +453,14 @@ local function checkKillMilestones(player, record)
         if reward.enabled and (record.streakKills or 0) >= threshold and not record.streakMilestonesGranted[tierId] then
             local context = "kill-streak tier " .. tostring(tierId)
             local delivery = record.streakMilestoneDelivery[tierId] or {}
+            local now = SL.now()
+            if (tonumber(delivery.nextRetryAt) or 0) > now then
+                record.streakMilestoneDelivery[tierId] = delivery
+            else
             if not delivery.items then
                 delivery.items, delivery.itemProgress = grantItems(
                     player,
-                    parseItems(reward.items, SL.getOptions().maximumRewardItemCount),
+                    parseItems(reward.items, SL.getOptions().maximumRewardItemCount, context),
                     delivery.itemProgress,
                     context
                 )
@@ -445,7 +478,9 @@ local function checkKillMilestones(player, record)
                 })
                 radioEvent("community", tostring(player:getUsername()).." reached Survivor League milestone "..tostring(threshold).." kills.", "SURVIVOR_LEAGUE_MILESTONE")
             else
+                delivery.nextRetryAt = now + 60
                 rewardWarning(player, "milestone", tierId, "reward remains pending for retry")
+            end
             end
         end
     end
@@ -563,24 +598,41 @@ local function observePlayer(player)
     record.lastVanillaKills = current
 end
 
-local function observeReportedKills(player, reported)
+local function killReportAck(player, current, accepted, reason)
+    sendServerCommand(player, SL.MODULE, "KillReportAck", {
+        kills = math.max(0, math.floor(tonumber(current) or 0)),
+        accepted = accepted == true,
+        reason = tostring(reason or ""),
+    })
+end
+
+local function observeReportedKills(player, reported, force)
     local key, record = recordFor(player)
     if not key then return end
     local opts = SL.getOptions()
     if not opts.allowClientKillReports then
         print("[SurvivorLeagueCommunityWarning] Rejected disabled client kill report for " .. tostring(key))
+        killReportAck(player, reported, false, "disabled")
         return
     end
 
     local now = SL.now()
     local lastReport = tonumber(clientKillReportTimes[key]) or 0
-    if lastReport > 0 and (now - lastReport) < opts.clientReportMinimumSeconds then
+    local verifiedDead = false
+    if force == true then pcall(function() verifiedDead = player:isDead() == true end) end
+    if not verifiedDead and lastReport > 0 and (now - lastReport) < opts.clientReportMinimumSeconds then
         print("[SurvivorLeagueCommunityWarning] Rejected rate-limited kill report for " .. tostring(key))
+        killReportAck(player, reported, false, "rate-limited")
         return
     end
-    clientKillReportTimes[key] = now
 
-    local current = math.max(0, math.floor(tonumber(reported) or 0))
+    local numericReport = tonumber(reported)
+    if numericReport == nil then
+        print("[SurvivorLeagueCommunityWarning] Rejected malformed kill report for " .. tostring(key))
+        killReportAck(player, record.lastClientKills or 0, false, "malformed")
+        return
+    end
+    local current = math.max(0, math.floor(numericReport))
     local previous = tonumber(record.lastClientKills)
     local gained = 0
 
@@ -595,11 +647,21 @@ local function observeReportedKills(player, reported)
         gained = current - previous
     end
 
-    if gained > opts.maximumClientKillDelta then
-        print("[SurvivorLeagueCommunityWarning] Rejected implausible kill delta for " .. tostring(key) .. ": " .. tostring(gained) .. " (limit " .. tostring(opts.maximumClientKillDelta) .. ")")
+    local elapsed = lastReport > 0 and math.max(1, now - lastReport) or opts.clientReportMinimumSeconds
+    local configuredLimit = math.max(1, math.ceil(opts.clientKillMaxPerMinute * elapsed / 60))
+    local allowedDelta = math.min(opts.maximumClientKillDelta, configuredLimit)
+    if gained > allowedDelta then
+        print("[SurvivorLeagueCommunityWarning] Rejected implausible kill delta for " .. tostring(key) .. ": " .. tostring(gained) .. " (limit " .. tostring(allowedDelta) .. ")")
+        -- Re-baseline without awarding the rejected increase so one suspicious
+        -- report cannot permanently prevent later legitimate synchronization.
+        record.lastClientKills = current
+        record.lastVanillaKills = current
+        clientKillReportTimes[key] = now
+        killReportAck(player, current, false, "implausible-delta")
         return
     end
 
+    clientKillReportTimes[key] = now
     record.lastClientKills = current
     record.lastVanillaKills = current
     if gained > 0 then
@@ -617,6 +679,7 @@ local function observeReportedKills(player, reported)
     state.lastCharacter = characterName(player)
     runtime[key] = state
     ModData.transmit(SL.DATA_KEY)
+    killReportAck(player, current, true, "accepted")
 end
 
 hoursSurvived = function(player)
@@ -673,6 +736,25 @@ sendServerCommand(SL.MODULE, "DeathAnnouncement", {
 })
 end
 
+local function captureFinalAuthoritativeKills(player, key, record)
+    local opts = SL.getOptions()
+    if record.clientKillSync and opts.allowClientKillReports then return end
+    local current = safeKills(player)
+    local state = runtime[key]
+    local previous = state and tonumber(state.lastKills) or tonumber(record.lastVanillaKills)
+    if previous ~= nil and current > previous then
+        local gained = current - previous
+        record.kills = (record.kills or 0) + gained
+        record.totalKills = (record.totalKills or 0) + gained
+        record.streakKills = (record.streakKills or 0) + gained
+        record.bestStreak = math.max(tonumber(record.bestStreak) or 0, record.streakKills)
+        if announceKills then announceKills(key, record, player, gained) end
+        checkKillMilestones(player, record)
+    end
+    record.lastVanillaKills = current
+    if state then state.lastKills = current end
+end
+
 local function onPlayerDeath(player)
     if not SL.getOptions().enabled then return end
     local key, record = recordFor(player)
@@ -680,6 +762,7 @@ local function onPlayerDeath(player)
     if key and recentDeaths[key] and now - recentDeaths[key] < 10 then return end
     if key then recentDeaths[key] = now end
     if record then
+        captureFinalAuthoritativeKills(player, key, record)
         -- Survival time is always derived from the server player object.
         announceDeath(record, player, SL.getOptions())
         record.lastVanillaKills = 0
@@ -691,7 +774,7 @@ local function onPlayerDeath(player)
     sendServerCommand(SL.MODULE, "ScoreReset", { username = key })
 end
 
-local function onClientDeathReport(player)
+local function onClientDeathReport(player, reportedKills)
     local opts = SL.getOptions()
     local key = SL.playerKey(player)
     if not key then return end
@@ -713,13 +796,14 @@ local function onClientDeathReport(player)
     end
     clientDeathReportTimes[key] = now
     -- Never trust client-provided survival duration.
+    if opts.allowClientKillReports then observeReportedKills(player, reportedKills, true) end
     onPlayerDeath(player)
 end
 
 local function rewardSummary(place, opts)
     local parts = {}
     if (opts.xp[place] or 0) > 0 then parts[#parts + 1] = tostring(opts.xp[place]) .. " XP" end
-    local items = parseItems(opts.items[place], opts.maximumRewardItemCount)
+    local items = parseItems(opts.items[place], opts.maximumRewardItemCount, "season reward summary "..tostring(place))
     for i = 1, math.min(2, #items) do
         local shortName = tostring(items[i].itemType):gsub("^.-%.", "")
         parts[#parts + 1] = shortName .. " x" .. tostring(items[i].count)
@@ -736,7 +820,7 @@ local function killStreakRewardSummaries(opts)
         if xp > 0 then
             parts[#parts + 1] = tostring(xp) .. " " .. tostring(reward.xpPerk or "XP") .. " XP"
         end
-        local items = parseItems(reward.items, opts.maximumRewardItemCount)
+        local items = parseItems(reward.items, opts.maximumRewardItemCount, "kill-streak reward summary "..tostring(reward.id))
         for _, item in ipairs(items) do
             local shortName = tostring(item.itemType):gsub("^.-%.", "")
             parts[#parts + 1] = shortName .. " x" .. tostring(item.count)
@@ -820,9 +904,19 @@ local function correctScore(actor, targetUsername, seasonKills, totalKills, stre
         print("[SurvivorLeagueCommunityAudit] Unauthorized score correction rejected | actor=" .. tostring(actorKey))
         return false, "not-authorized"
     end
-    local target = sanitizeName(targetUsername)
+    local requestedTarget = tostring(targetUsername or "")
+    local target = requestedTarget
     local d = data()
     local record = d.scores[target]
+    if not record then
+        local sanitizedTarget = sanitizeName(requestedTarget)
+        for key, candidate in pairs(d.scores) do
+            if sanitizeName(key) == sanitizedTarget or sanitizeName(candidate.username) == sanitizedTarget then
+                target, record = key, candidate
+                break
+            end
+        end
+    end
     if not record then
         print("[SurvivorLeagueCommunityAudit] Score correction rejected | actor=" .. tostring(actorKey) .. " | target=" .. tostring(target) .. " | reason=unknown-player")
         return false, "unknown-player"
@@ -843,6 +937,7 @@ local function correctScore(actor, targetUsername, seasonKills, totalKills, stre
         .. " | total=" .. tostring(beforeTotal) .. "->" .. tostring(correctedTotal)
         .. " | streak=" .. tostring(beforeStreak) .. "->" .. tostring(correctedStreak)
         .. " | reason=" .. sanitizeName(reason or "manual correction"))
+    ModData.transmit(SL.DATA_KEY)
     return true, record
 end
 
@@ -957,7 +1052,7 @@ local function onClientCommand(module, command, player, args)
             sendBoard(player)
         end
     end
-    if command == "ReportKills" then observeReportedKills(player, args and args.kills) end
+    if command == "ReportKills" then observeReportedKills(player, args and args.kills, args and args.force == true) end
     if command == "PreviewLegacyRecovery" then
         local ok, result = previewLegacyRecovery(player)
         sendServerCommand(player, SL.MODULE, "RecoveryPreviewResult", {
@@ -992,7 +1087,7 @@ local function onClientCommand(module, command, player, args)
         end
     end
     if command == "ReportDeath" then
-        onClientDeathReport(player)
+        onClientDeathReport(player, args and args.kills)
     end
 end
 
@@ -1000,15 +1095,30 @@ local function onPlayerUpdate(player)
     if not SL.getOptions().enabled then return end
     local key = player and SL.playerKey(player)
     if key and compatibleClients[key] == player then grantPending(player) end
-    pollTicks = pollTicks + 1
-    if pollTicks % 120 ~= 0 then return end
+    if not key then return end
+    serverPollTicks[key] = (tonumber(serverPollTicks[key]) or 0) + 1
+    if serverPollTicks[key] % 120 ~= 0 then return end
     observePlayer(player)
     checkSeasonSettlement()
+end
+
+local function cleanupPlayer(player)
+    local key = player and SL.playerKey(player)
+    if not key then return end
+    runtime[key] = nil
+    serverPollTicks[key] = nil
+    clientKillReportTimes[key] = nil
+    clientDeathReportTimes[key] = nil
+    leaderboardRequestTimes[key] = nil
+    compatibleClients[key] = nil
+    announcedConnections[key] = nil
+    recentDeaths[key] = nil
 end
 
 Events.OnClientCommand.Add(onClientCommand)
 Events.OnPlayerUpdate.Add(onPlayerUpdate)
 if Events.OnPlayerDeath then Events.OnPlayerDeath.Add(onPlayerDeath) end
+if Events.OnPlayerDisconnect then Events.OnPlayerDisconnect.Add(cleanupPlayer) end
 Events.OnInitGlobalModData.Add(function() data() end)
 if Events.OnServerStarted then Events.OnServerStarted.Add(function() checkSeasonSettlement("server-start") end) end
 if Events.EveryOneMinute then Events.EveryOneMinute.Add(function() checkSeasonSettlement("one-minute") end) end

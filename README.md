@@ -16,7 +16,7 @@ Survivor League is the unified, open-source Project Zomboid Build 42 multiplayer
 - **Master enable control:** Disabling the mod now stops tracking, commands, rewards, join notices, death notices, and leaderboard requests consistently.
 - **Protocol verification:** Clients must complete an exact protocol and release handshake before gameplay or administrative commands are accepted.
 - **UTF-8-safe names:** Multibyte player and character names are sanitized and truncated only at valid character boundaries.
-- **Three interface themes:** Choose Project Zomboid, Meeks Protocol, or Military styling through Sandbox Options, with optional cosmetic player overrides.
+- **Three interface themes:** Meeks Protocol pink is the default. Server owners can choose Project Zomboid or Military styling through Sandbox Options, with optional cosmetic player overrides.
 - **White-label branding:** Configure the Command Center title and subtitle without maintaining a separate build.
 - **Guarded legacy migration:** Empty Community datasets can import the former `SurvivorLeagueData` table without deleting it. Populated datasets are never merged automatically.
 - **Audited score correction:** Authorized administrators can correct stored season, lifetime, and streak totals through the server-authoritative `SurvivorLeagueCommunity.AdminAPI.correctScore` function; every change records actor, target, before/after values, and reason.
@@ -32,7 +32,7 @@ Dedicated servers should leave **Allow hosted/co-op client kill-report fallback*
 
 Season expiry is checked when the server starts, once per minute, and during normal player polling. A settlement guard prevents overlapping timer or admin requests from issuing duplicate podium rewards.
 
-**Season Kills are cumulative for the active season.** Death resets only Current Streak and its once-per-life milestone claims. Total Kills and Best Streak remain persistent. The legacy `LeaderboardSize` value is still read from saved presets for compatibility, but the option is hidden and the Command Center always paginates all registered scores at 10 players per page.
+**Season Kills are cumulative for the active season.** Death resets only Current Streak and its once-per-life milestone claims. Total Kills and Best Streak remain persistent. The visible `LeaderboardSize` option is retained only for saved-preset compatibility; the Command Center always paginates all registered scores at 10 players per page.
 
 Leaderboard requests are throttled on both client and server, and player names are sanitized and length-limited before being sent to the interface. Verified client death reports are disabled by default and should only be enabled for hosted/co-op sessions that miss native death events.
 

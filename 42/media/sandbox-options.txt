@@ -26,7 +26,7 @@ option SurvivorLeagueCommunity.JoinMessage20 { type = string, default = "", page
 
 option SurvivorLeagueCommunity.Enabled { type = boolean, default = true, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_Enabled, }
 option SurvivorLeagueCommunity.InterfaceKey { type = integer, min = 0, max = 255, default = 64, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_InterfaceKey, }
-option SurvivorLeagueCommunity.InterfaceTheme { type = enum, numValues = 3, default = 1, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_InterfaceTheme, }
+option SurvivorLeagueCommunity.InterfaceTheme { type = enum, numValues = 3, default = 2, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_InterfaceTheme, }
 option SurvivorLeagueCommunity.InterfaceTitle { type = string, default = "", page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_InterfaceTitle, }
 option SurvivorLeagueCommunity.InterfaceSubtitle { type = string, default = COMMAND CENTER, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_InterfaceSubtitle, }
 option SurvivorLeagueCommunity.AllowPlayerThemeOverride { type = boolean, default = false, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_AllowPlayerThemeOverride, }

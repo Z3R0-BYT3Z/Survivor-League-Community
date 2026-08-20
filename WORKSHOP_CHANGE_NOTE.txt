@@ -1,1 +1,1 @@
-v1.7.1: fixes legacy score migration on Kahlua, adds a read-only current/legacy recovery export, and centers leaderboard rank and podium labels.
+v1.7.5: removes the unstable Admin score-entry form, fixes Admin-tab errors and overlap, and retains the matching Radio Frequencies palette plus all stabilization fixes.

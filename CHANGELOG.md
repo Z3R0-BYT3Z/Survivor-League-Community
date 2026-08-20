@@ -1,5 +1,27 @@
 # Changelog
 
+## 1.7.5 — 2026-08-19
+
+- Removed the unstable in-game text-entry score-correction form that caused Admin-tab errors and severe font overlap.
+- Rebuilt the Admin tab around supported, font-safe score-snapshot and confirmation-gated season-settlement controls.
+- Preserved the server-authorized score-correction API for controlled administrative use.
+
+## 1.7.4 — 2026-08-19
+
+- Matched the complete Meeks Protocol palette to Radio Frequencies, including background, panels, primary/bright magenta, muted text, borders, and online status colors.
+
+## 1.7.3 — 2026-08-19
+
+- Integrated the unreleased v1.7.2 stabilization backup into the canonical GitHub source.
+- Replaced shared multiplayer polling with independent per-player polling and disconnect cleanup.
+- Added acknowledged, retryable hosted/co-op kill reports with the configured per-minute limit and verified final-death synchronization.
+- Added malformed reward diagnostics, milestone retry pacing, stable settlement reward IDs, and restart-safe settlement markers.
+- Preserved raw account keys for administration while keeping UI-safe display names.
+- Kept legacy gameplay settings and score migration without allowing them to override unified interface settings.
+- Made migrated Meeks Protocol servers select the pink theme automatically and changed the fresh-install default to Meeks Protocol pink.
+- Rebuilt the Command Center header, tabs, leaderboard columns, reward rows, text wrapping, and footer around measured font dimensions.
+- Bumped the client/server compatibility schema to 11 and protocol to 4.
+
 ## 1.7.1 — 2026-08-19
 
 - Replaced the unsupported Kahlua `next()` migration check with a guarded `pairs()` scan.

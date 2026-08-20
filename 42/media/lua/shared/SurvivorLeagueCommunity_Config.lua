@@ -1,12 +1,12 @@
 SurvivorLeagueCommunity = SurvivorLeagueCommunity or {}
 SurvivorLeagueCommunity.MODULE = "SurvivorLeagueCommunity"
 SurvivorLeagueCommunity.DATA_KEY = "SurvivorLeagueCommunityData"
-SurvivorLeagueCommunity.VERSION = 9
-SurvivorLeagueCommunity.PROTOCOL_VERSION = 2
+SurvivorLeagueCommunity.VERSION = 11
+SurvivorLeagueCommunity.PROTOCOL_VERSION = 4
 
 SurvivorLeagueCommunity.THEMES = {
     [1] = { id="ProjectZomboid", title="SURVIVOR LEAGUE", bg={0.035,0.035,0.045,0.97}, panel={0.065,0.065,0.080,0.96}, rowA={0.085,0.085,0.100,0.92}, rowB={0.055,0.055,0.068,0.92}, accent={0.92,0.92,0.92,1.0}, silver={0.77,0.79,0.82,1.0}, bronze={0.77,0.48,0.27,1.0}, text={0.92,0.92,0.95,1.0}, muted={0.58,0.59,0.64,1.0}, line={0.20,0.20,0.24,0.85}, live={0.30,0.90,0.55,1.0} },
-    [2] = { id="MeeksProtocol", title="MEEKS PROTOCOL", bg={0.025,0.015,0.025,0.97}, panel={0.075,0.030,0.065,0.96}, rowA={0.125,0.045,0.100,0.94}, rowB={0.075,0.028,0.065,0.94}, accent={1.00,0.10,0.55,1.0}, silver={1.00,0.72,0.87,1.0}, bronze={0.86,0.49,0.20,1.0}, text={0.98,0.92,0.96,1.0}, muted={0.70,0.46,0.61,1.0}, line={0.34,0.12,0.27,0.90}, live={0.30,0.90,0.55,1.0} },
+    [2] = { id="MeeksProtocol", title="MEEKS PROTOCOL", bg={0.031,0.035,0.055,0.98}, panel={0.047,0.051,0.075,0.97}, rowA={0.082,0.041,0.071,0.94}, rowB={0.047,0.051,0.075,0.94}, accent={0.878,0.220,0.659,1.0}, bright={0.973,0.157,0.753,1.0}, silver={0.973,0.690,0.860,1.0}, bronze={0.86,0.49,0.20,1.0}, text={0.94,0.94,0.97,1.0}, muted={0.64,0.61,0.69,1.0}, line={0.290,0.090,0.231,0.92}, live={0.400,0.898,0.545,1.0} },
     [3] = { id="Military", title="SURVIVOR LEAGUE", bg={0.035,0.045,0.025,0.97}, panel={0.075,0.085,0.050,0.96}, rowA={0.105,0.115,0.070,0.94}, rowB={0.060,0.070,0.040,0.94}, accent={0.48,0.62,0.25,1.0}, silver={0.72,0.74,0.64,1.0}, bronze={0.62,0.47,0.24,1.0}, text={0.83,0.82,0.67,1.0}, muted={0.53,0.55,0.43,1.0}, line={0.24,0.30,0.14,0.90}, live={0.56,0.72,0.30,1.0} },
 }
 
@@ -33,8 +33,12 @@ end
 
 SurvivorLeagueCommunity.cleanSandboxString = cleanSandboxString
 
+local function canonicalRoot()
+    return SandboxVars and SandboxVars.SurvivorLeagueCommunity or {}
+end
+
 local function sandboxRoot()
-    local canonical = SandboxVars and SandboxVars.SurvivorLeagueCommunity or {}
+    local canonical = canonicalRoot()
     local legacy = SandboxVars and SandboxVars.SurvivorLeague or nil
     if SurvivorLeagueCommunity.USE_LEGACY_SETTINGS == true
         and canonical.LegacyMeeksSettingsFallback ~= false
@@ -68,14 +72,25 @@ end
 
 function SurvivorLeagueCommunity.getOptions()
     local root = sandboxRoot()
+    -- Appearance and input settings belong to the unified mod. Legacy Meeks
+    -- settings may supply gameplay values, but must never replace these newer
+    -- interface keys or force the Community/white fallback theme.
+    local interface = canonicalRoot()
+    local selectedInterfaceTheme = math.max(1, math.min(3, tonumber(interface.InterfaceTheme) or 2))
+    if SurvivorLeagueCommunity.USE_LEGACY_SETTINGS == true then
+        -- A successfully migrated legacy dataset identifies a Meeks Protocol
+        -- server. Keep its consolidated interface pink even when an older
+        -- generated preset still contains the former Community default (1).
+        selectedInterfaceTheme = 2
+    end
     local options = {
         enabled = root.Enabled ~= false,
-        interfaceKey = math.max(0, math.min(255, tonumber(root.InterfaceKey) or 64)),
-        interfaceTheme = math.max(1, math.min(3, tonumber(root.InterfaceTheme) or 1)),
-        interfaceTitle = cleanSandboxString(root.InterfaceTitle) or "",
-        interfaceSubtitle = cleanSandboxString(root.InterfaceSubtitle) or "COMMAND CENTER",
-        allowPlayerThemeOverride = root.AllowPlayerThemeOverride == true,
-        legacyMeeksSettingsFallback = root.LegacyMeeksSettingsFallback ~= false,
+        interfaceKey = math.max(0, math.min(255, tonumber(interface.InterfaceKey) or 64)),
+        interfaceTheme = selectedInterfaceTheme,
+        interfaceTitle = cleanSandboxString(interface.InterfaceTitle) or "",
+        interfaceSubtitle = cleanSandboxString(interface.InterfaceSubtitle) or "COMMAND CENTER",
+        allowPlayerThemeOverride = interface.AllowPlayerThemeOverride == true,
+        legacyMeeksSettingsFallback = interface.LegacyMeeksSettingsFallback ~= false,
         seasonDays = math.max(1, tonumber(root.SeasonDays) or 7),
         minimumKills = math.max(0, tonumber(root.MinimumKills) or 25),
         -- Retained for saved Sandbox preset compatibility. Pagination now

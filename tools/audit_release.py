@@ -65,6 +65,18 @@ def main() -> None:
         fail("Kahlua-incompatible legacy dataset checks are present")
     if "drawTextCenteredInBox" not in client:
         fail("Font-measured box label centering is missing")
+    if "textWidth(tab[2], UIFont.Small)" not in client or "wrapTwoLines" not in client:
+        fail("Responsive tab sizing or two-line reward wrapping is missing")
+    if "serverPollTicks[key]" not in server:
+        fail("Independent per-player server polling is missing")
+    if "opts.clientKillMaxPerMinute" not in server or "KillReportAck" not in server:
+        fail("Configured hosted kill-rate enforcement or report acknowledgements are missing")
+    if "captureFinalAuthoritativeKills" not in server:
+        fail("Final authoritative death synchronization is missing")
+    if "rewardId = \"season:\"" not in server or "settlementInProgress" not in server:
+        fail("Idempotent settlement safeguards are missing")
+    if not re.search(r"InterfaceTheme\s*\{[^\n]*default\s*=\s*2", sandbox):
+        fail("Meeks Protocol pink is not the default interface theme")
     if args.package:
         package = (ROOT / args.package).resolve() / "Contents/mods/SurvivorLeagueCommunity"
         compare_trees(ROOT / "42", package / "42")
