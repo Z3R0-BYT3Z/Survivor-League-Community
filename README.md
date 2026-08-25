@@ -1,5 +1,7 @@
 # Survivor League
 
+Current version: **1.8.6**
+
 Survivor League is the unified, open-source Project Zomboid Build 42 multiplayer competition mod. It combines the former Community and Meeks Protocol editions through selectable interface themes while retaining one authoritative scoring and persistence system.
 
 ## Features
@@ -10,7 +12,7 @@ Survivor League is the unified, open-source Project Zomboid Build 42 multiplayer
 - **Five kill-streak reward tiers:** Each tier can award configurable items and perk XP once per survivor life, then resets on death.
 - **Death announcements:** Optional server-wide notices can include survival time, Season Kills, Total Kills, and a custom prefix. Server chat and above-player halo delivery can be controlled separately; chat is enabled and halos are disabled by default.
 - **Randomized join announcements:** Welcome connecting players with up to 20 admin-editable messages. `{name}` automatically inserts the player's name; prefix, cooldown, and enable/disable controls are available through Sandbox Options.
-- **Build 42 chat compatibility:** Announcement rendering explicitly binds the current chat API and falls back to an on-screen notice when necessary.
+- **Build 42 chat compatibility:** Join notices are inserted into chat without creating Build 42's red server alert; death and administrative notices retain their independently configured delivery behavior.
 - **System-delivered status notices:** Protocol, reward, correction, streak-reset, and settlement notices appear as server/system messages instead of making the player's character speak.
 - **Server-first synchronization:** Dedicated servers track kills from the server player object. An optional hosted/co-op client fallback is disabled by default and protected by configurable time-based rate limits.
 - **Verified death fallback:** Optional client death reports are accepted only when the server confirms that the player is dead.
@@ -50,7 +52,7 @@ Granular permissions and a separate read-only moderator status panel are planned
 
 ## Updating from 1.8.0
 
-Replace both the client and server copies with the complete 1.8.1 package, then restart Project Zomboid and the server. Mixed 1.8.0/1.8.1 installations are intentionally rejected by the version handshake. Existing standings, season history, and Sandbox settings remain compatible.
+Replace both the client and server copies with the complete 1.8.6 package, then restart Project Zomboid and the server. Mixed installations are intentionally rejected by the version handshake. Existing standings, season history, and Sandbox settings remain compatible.
 
 ## Installation
 
