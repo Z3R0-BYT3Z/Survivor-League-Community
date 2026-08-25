@@ -1,0 +1,16 @@
+SURVIVOR LEAGUE v1.8.4 - BUILD 42 F6 REGISTRATION FIX
+
+Confirmed cause:
+- v1.8.3 packaged media/sandbox-options.txt with VERSION = 1.
+- Project Zomboid Build 42 requires VERSION = 2.
+- The server therefore did not generate a SurvivorLeagueCommunity SandboxVars
+  block, including InterfaceKey = 64 for F6.
+
+Fixes:
+- Registers custom Sandbox Options with Build 42 VERSION = 2.
+- Keeps F6 at keycode 64 by default.
+- An F6 press during handshake now opens automatically when acknowledged.
+- Adds client-load and handshake diagnostics to console.txt.
+- Preserves all existing standings and the v1.8.3 baseline correction.
+
+Install on Steam/server/clients and fully restart the server and game.
