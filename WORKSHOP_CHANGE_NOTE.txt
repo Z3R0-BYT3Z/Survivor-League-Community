@@ -1,1 +1,1 @@
-v1.7.5: removes the unstable Admin score-entry form, fixes Admin-tab errors and overlap, and retains the matching Radio Frequencies palette plus all stabilization fixes.
+v1.8.6 keeps player login notices in in-game chat without triggering Build 42's red server-alert display. Structured SurvivorLeagueCommunityJoin logging remains unchanged for Discord and website relays. Death and administrative notices are unchanged.
