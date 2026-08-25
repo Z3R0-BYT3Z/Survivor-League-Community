@@ -1,0 +1,11 @@
+UI_DE = {
+    UI_SurvivorLeagueCommunity_Leaderboard = "BESTENLISTE",
+    UI_SurvivorLeagueCommunity_MyStats = "MEINE STATISTIK",
+    UI_SurvivorLeagueCommunity_History = "SAISONVERLAUF",
+    UI_SurvivorLeagueCommunity_Rewards = "BELOHNUNGEN",
+    UI_SurvivorLeagueCommunity_Status = "STATUS",
+    UI_SurvivorLeagueCommunity_Admin = "ADMIN",
+    UI_SurvivorLeagueCommunity_Search = "SUCHEN",
+    UI_SurvivorLeagueCommunity_Refresh = "AKTUALISIEREN",
+    UI_SurvivorLeagueCommunity_Online = "ONLINE",
+}

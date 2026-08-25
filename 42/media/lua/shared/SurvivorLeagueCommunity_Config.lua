@@ -1,8 +1,8 @@
 SurvivorLeagueCommunity = SurvivorLeagueCommunity or {}
 SurvivorLeagueCommunity.MODULE = "SurvivorLeagueCommunity"
 SurvivorLeagueCommunity.DATA_KEY = "SurvivorLeagueCommunityData"
-SurvivorLeagueCommunity.VERSION = 16
-SurvivorLeagueCommunity.PROTOCOL_VERSION = 4
+SurvivorLeagueCommunity.VERSION = 17
+SurvivorLeagueCommunity.PROTOCOL_VERSION = 5
 
 SurvivorLeagueCommunity.THEMES = {
     [1] = { id="ProjectZomboid", title="SURVIVOR LEAGUE", bg={0.035,0.035,0.045,0.97}, panel={0.065,0.065,0.080,0.96}, rowA={0.085,0.085,0.100,0.92}, rowB={0.055,0.055,0.068,0.92}, accent={0.92,0.92,0.92,1.0}, silver={0.77,0.79,0.82,1.0}, bronze={0.77,0.48,0.27,1.0}, text={0.92,0.92,0.95,1.0}, muted={0.58,0.59,0.64,1.0}, line={0.20,0.20,0.24,0.85}, live={0.30,0.90,0.55,1.0} },
@@ -91,21 +91,33 @@ function SurvivorLeagueCommunity.getOptions()
         interfaceSubtitle = cleanSandboxString(interface.InterfaceSubtitle) or "COMMAND CENTER",
         allowPlayerThemeOverride = interface.AllowPlayerThemeOverride == true,
         legacyMeeksSettingsFallback = interface.LegacyMeeksSettingsFallback ~= false,
+        localizationLanguage = math.max(1, math.min(2, tonumber(interface.LocalizationLanguage) or 1)),
+        moderatorViewStatus = interface.ModeratorViewStatus ~= false,
+        moderatorManageScores = interface.ModeratorManageScores == true,
+        moderatorManageRewards = interface.ModeratorManageRewards == true,
+        moderatorManageSeasons = interface.ModeratorManageSeasons == true,
         seasonDays = math.max(1, tonumber(root.SeasonDays) or 7),
         minimumKills = math.max(0, tonumber(root.MinimumKills) or 25),
+        seasonTiePolicy = math.max(1, math.min(3, tonumber(root.SeasonTiePolicy) or 1)),
         -- Retained for saved Sandbox preset compatibility. Pagination now
         -- deliberately exposes every registered score, so this value is not
         -- used to truncate server results.
         deprecatedLeaderboardSize = math.max(3, tonumber(root.LeaderboardSize) or 10),
-        leaderboardSize = math.max(3, tonumber(root.LeaderboardSize) or 10),
+        leaderboardSize = 10,
+        leaderboardUpdatesPerSecond = math.max(1, math.min(30, tonumber(root.LeaderboardUpdatesPerSecond) or 10)),
         nameFormat = math.max(1, math.min(3, tonumber(root.NameFormat) or 1)),
-        allowClientKillReports = root.AllowClientKillReports == true,
+        -- Default to enabled when an older SandboxVars file does not contain
+        -- this option. Dedicated Build 42 servers may not advance the
+        -- server-side zombie-kill counter, so validated client reports are
+        -- required to keep league totals and external webhooks current.
+        allowClientKillReports = root.AllowClientKillReports ~= false,
         clientKillReportIntervalSeconds = math.max(1, tonumber(root.ClientKillReportIntervalSeconds) or 15),
         clientKillMaxPerMinute = math.max(1, tonumber(root.ClientKillMaxPerMinute) or 120),
         clientReportMinimumSeconds = math.max(1, tonumber(root.ClientKillReportIntervalSeconds) or 15),
         maximumClientKillDelta = 500,
         maximumRewardItemCount = 100,
         allowClientDeathReports = root.AllowClientDeathReports == true,
+        deathReportMinimumSeconds = math.max(1, tonumber(root.DeathReportMinimumSeconds) or 10),
         deathAnnouncements = root.DeathAnnouncements ~= false,
         deathChatAnnouncements = root.DeathChatAnnouncements ~= false,
         deathHaloAnnouncements = root.DeathHaloAnnouncements == true,

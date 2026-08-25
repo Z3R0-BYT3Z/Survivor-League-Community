@@ -30,15 +30,22 @@ option SurvivorLeagueCommunity.InterfaceTheme { type = enum, numValues = 3, defa
 option SurvivorLeagueCommunity.InterfaceTitle { type = string, default = "", page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_InterfaceTitle, }
 option SurvivorLeagueCommunity.InterfaceSubtitle { type = string, default = COMMAND CENTER, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_InterfaceSubtitle, }
 option SurvivorLeagueCommunity.AllowPlayerThemeOverride { type = boolean, default = false, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_AllowPlayerThemeOverride, }
+option SurvivorLeagueCommunity.LocalizationLanguage { type = enum, numValues = 2, default = 1, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_LocalizationLanguage, }
+option SurvivorLeagueCommunity.ModeratorViewStatus { type = boolean, default = true, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_ModeratorViewStatus, }
+option SurvivorLeagueCommunity.ModeratorManageScores { type = boolean, default = false, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_ModeratorManageScores, }
+option SurvivorLeagueCommunity.ModeratorManageRewards { type = boolean, default = false, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_ModeratorManageRewards, }
+option SurvivorLeagueCommunity.ModeratorManageSeasons { type = boolean, default = false, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_ModeratorManageSeasons, }
 option SurvivorLeagueCommunity.LegacyMeeksSettingsFallback { type = boolean, default = true, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_LegacyMeeksSettingsFallback, }
 option SurvivorLeagueCommunity.SeasonDays { type = integer, min = 1, max = 90, default = 7, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_SeasonDays, }
 option SurvivorLeagueCommunity.MinimumKills { type = integer, min = 0, max = 100000, default = 25, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_MinimumKills, }
-option SurvivorLeagueCommunity.LeaderboardSize { type = integer, min = 3, max = 100, default = 10, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_LeaderboardSize, }
+option SurvivorLeagueCommunity.SeasonTiePolicy { type = enum, numValues = 3, default = 1, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_SeasonTiePolicy, }
 option SurvivorLeagueCommunity.NameFormat { type = enum, numValues = 3, default = 1, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_NameFormat, }
-option SurvivorLeagueCommunity.AllowClientKillReports { type = boolean, default = false, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_AllowClientKillReports, }
+option SurvivorLeagueCommunity.LeaderboardUpdatesPerSecond { type = integer, min = 1, max = 30, default = 10, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_LeaderboardUpdatesPerSecond, }
+option SurvivorLeagueCommunity.AllowClientKillReports { type = boolean, default = true, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_AllowClientKillReports, }
 option SurvivorLeagueCommunity.ClientKillReportIntervalSeconds { type = integer, min = 1, max = 300, default = 15, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_ClientKillReportIntervalSeconds, }
 option SurvivorLeagueCommunity.ClientKillMaxPerMinute { type = integer, min = 1, max = 1000, default = 120, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_ClientKillMaxPerMinute, }
 option SurvivorLeagueCommunity.AllowClientDeathReports { type = boolean, default = false, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_AllowClientDeathReports, }
+option SurvivorLeagueCommunity.DeathReportMinimumSeconds { type = integer, min = 1, max = 300, default = 10, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_DeathReportMinimumSeconds, }
 option SurvivorLeagueCommunity.DeathAnnouncements { type = boolean, default = true, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_DeathAnnouncements, }
 option SurvivorLeagueCommunity.DeathChatAnnouncements { type = boolean, default = true, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_DeathChatAnnouncements, }
 option SurvivorLeagueCommunity.DeathHaloAnnouncements { type = boolean, default = false, page = SurvivorLeagueCommunity, translation = SurvivorLeagueCommunity_DeathHaloAnnouncements, }

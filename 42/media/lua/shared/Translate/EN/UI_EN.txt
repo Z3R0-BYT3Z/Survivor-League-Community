@@ -1,0 +1,17 @@
+UI_EN = {
+    UI_SurvivorLeagueCommunity_Leaderboard = "LEADERBOARD",
+    UI_SurvivorLeagueCommunity_MyStats = "MY STATS",
+    UI_SurvivorLeagueCommunity_History = "SEASON HISTORY",
+    UI_SurvivorLeagueCommunity_Rewards = "REWARDS",
+    UI_SurvivorLeagueCommunity_Status = "STATUS",
+    UI_SurvivorLeagueCommunity_Admin = "ADMIN",
+    UI_SurvivorLeagueCommunity_Search = "GO",
+    UI_SurvivorLeagueCommunity_Refresh = "REFRESH",
+    UI_SurvivorLeagueCommunity_RetryRewards = "RETRY REWARDS",
+    UI_SurvivorLeagueCommunity_ArchivePlayer = "ARCHIVE PLAYER",
+    UI_SurvivorLeagueCommunity_RestorePlayer = "RESTORE PLAYER",
+    UI_SurvivorLeagueCommunity_Online = "ONLINE",
+    UI_SurvivorLeagueCommunity_NoReward = "No reward configured",
+    UI_SurvivorLeagueCommunity_NoSeasons = "No completed seasons yet",
+    UI_SurvivorLeagueCommunity_ProtocolMismatch = "Survivor League client/server versions do not match. Update the mod before using the Command Center.",
+}

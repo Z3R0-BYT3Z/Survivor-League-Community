@@ -1,23 +1,26 @@
 require "SurvivorLeagueCommunity_Config"
+require "SurvivorLeagueCommunity_Localization"
 require "ISUI/ISPanel"
 require "ISUI/ISButton"
 require "ISUI/ISTextEntryBox"
 
 local SL = SurvivorLeagueCommunity
+local L = SL.text
 local panel
 local currentBoardPage = 1
+local currentBoardSearch = ""
 local lastReportedKills = -1
 local lastAcknowledgedKills = -1
 local pendingReportedKills = nil
 local lastKillReportAt = 0
-local killPollTicks = 0
 local playerReadyPending = true
 local playerReadyAttempts = 0
-local playerReadyTicks = 0
 local pendingJoinMessages = {}
-local joinMessageRetryTicks = 0
+local clientUpdateTicks = 0
 local lastBoardRequestAt = 0
 local protocolCompatible = false
+local sessionToken = nil
+local reportSequence = 0
 local openAfterHandshake = false
 local Appearance = SL.getAppearance(nil)
 local C = Appearance.palette
@@ -33,6 +36,7 @@ end
 
 local function reportLocalKills(force)
     if not SL.getOptions().allowClientKillReports then return end
+    if not protocolCompatible or not sessionToken then return end
     local player = getPlayer()
     if not player then return end
     local kills = 0
@@ -47,7 +51,8 @@ local function reportLocalKills(force)
         kills = pendingReportedKills
         lastReportedKills = kills
         lastKillReportAt = now
-        sendClientCommand(SL.MODULE, "ReportKills", { kills = kills, force = force == true })
+        reportSequence = reportSequence + 1
+        sendClientCommand(SL.MODULE, "ReportKills", { kills = kills, force = force == true, token=sessionToken, sequence=reportSequence })
     end
 end
 
@@ -55,9 +60,11 @@ local function beginPlayerReady(playerIndex, player)
     local p = player or (getSpecificPlayer and getSpecificPlayer(playerIndex)) or getPlayer()
     if not p then return false end
     protocolCompatible = false
+    sessionToken = nil
+    reportSequence = 0
     playerReadyPending = true
     playerReadyAttempts = 0
-    playerReadyTicks = 0
+    clientUpdateTicks = 0
     sendClientCommand(SL.MODULE, "PlayerReady", { protocol = SL.PROTOCOL_VERSION, version = SL.VERSION })
     return true
 end
@@ -74,13 +81,19 @@ function SL.requestScoreCorrection(username, seasonKills, totalKills, streakKill
     return true
 end
 
-local function refreshBoard()
+local function refreshBoard(page, search)
     if not protocolCompatible then return end
     local now = SL.now()
     if lastBoardRequestAt > 0 and (now - lastBoardRequestAt) < 2 then return end
     lastBoardRequestAt = now
     reportLocalKills(true)
-    sendClientCommand(SL.MODULE, "RequestLeaderboard", {})
+    currentBoardPage = math.max(1, math.floor(tonumber(page) or currentBoardPage or 1))
+    if search ~= nil then currentBoardSearch = tostring(search or "") end
+    sendClientCommand(SL.MODULE, "RequestLeaderboard", {
+        page = currentBoardPage,
+        pageSize = 10,
+        search = currentBoardSearch,
+    })
 end
 
 local function countdown(payload)
@@ -204,7 +217,7 @@ function LeaderboardPanel:new(payload)
     o.backgroundColor = {r=C.bg[1],g=C.bg[2],b=C.bg[3],a=C.bg[4]}
     o.borderColor = {r=C.accent[1],g=C.accent[2],b=C.accent[3],a=0.92}
     o.moveWithMouse = true
-    o.currentPage = math.max(1, currentBoardPage)
+    o.currentPage = math.max(1, tonumber(o.payload.page) or currentBoardPage)
     o.activeTab = "leaderboard"
     return o
 end
@@ -222,17 +235,20 @@ function LeaderboardPanel:getRowsPerPage()
 end
 
 function LeaderboardPanel:getPageCount()
-    return math.max(1, math.ceil(#(self.payload.rows or {}) / self:getRowsPerPage()))
+    return math.max(1, tonumber(self.payload.pageCount) or math.ceil(#(self.payload.rows or {}) / self:getRowsPerPage()))
 end
 
 function LeaderboardPanel:updateControls()
     local ranking = self.activeTab == "leaderboard"
+    local adminTab = self.activeTab == "admin" and (self.payload.isAdmin == true or self.payload.canManageScores == true or self.payload.canManageRewards == true or self.payload.canManageSeasons == true)
     if self.previousPage then self.previousPage:setVisible(ranking); self.previousPage.enable = self.currentPage > 1 end
     if self.nextPage then self.nextPage:setVisible(ranking); self.nextPage.enable = self.currentPage < self:getPageCount() end
-    if self.settleButton then self.settleButton:setVisible(self.activeTab == "admin" and self.payload.isAdmin == true) end
-    if self.recoveryPreviewButton then self.recoveryPreviewButton:setVisible(self.activeTab == "admin" and self.payload.isAdmin == true) end
+    if self.settleButton then self.settleButton:setVisible(adminTab); self.settleButton.enable = self.payload.canManageSeasons == true end
+    if self.recoveryPreviewButton then self.recoveryPreviewButton:setVisible(adminTab); self.recoveryPreviewButton.enable = self.payload.canViewDiagnostics == true end
+    if self.searchEntry then self.searchEntry:setVisible(ranking) end
+    if self.searchButton then self.searchButton:setVisible(ranking) end
     for _, control in ipairs(self.adminControls or {}) do
-        control:setVisible(self.activeTab == "admin" and self.payload.isAdmin == true)
+        control:setVisible(adminTab)
     end
     for key, button in pairs(self.tabButtons or {}) do
         local selected = key == self.activeTab
@@ -252,12 +268,18 @@ function LeaderboardPanel:setPage(page)
     self.currentPage = math.max(1, math.min(tonumber(page) or 1, self:getPageCount()))
     currentBoardPage = self.currentPage
     self:updateControls()
+    refreshBoard(self.currentPage, currentBoardSearch)
 end
 
 function LeaderboardPanel:onPreviousPage() self:setPage(self.currentPage - 1) end
 function LeaderboardPanel:onNextPage() self:setPage(self.currentPage + 1) end
 function LeaderboardPanel:onClose() closeBoard(self) end
 function LeaderboardPanel:onRefresh() refreshBoard() end
+function LeaderboardPanel:onSearch()
+    currentBoardSearch = self.searchEntry and self.searchEntry:getText() or ""
+    currentBoardPage = 1
+    refreshBoard(1, currentBoardSearch)
+end
 function LeaderboardPanel:onSettleSeason()
     local now = SL.now()
     if not self.settleArmedAt or (now - self.settleArmedAt) > 10 then
@@ -286,6 +308,27 @@ function LeaderboardPanel:onCorrectScore()
         self.adminReason and self.adminReason:getText() or "in-game admin correction"
     )
     self.correctScoreButton:setTitle("CORRECTION REQUESTED")
+end
+
+function LeaderboardPanel:onRetryRewards()
+    local username = self.adminUsername and self.adminUsername:getText() or ""
+    sendClientCommand(SL.MODULE, "RetryPendingRewards", { username=username })
+end
+
+function LeaderboardPanel:onArchivePlayer()
+    local username = self.adminUsername and self.adminUsername:getText() or ""
+    if username ~= "" then sendClientCommand(SL.MODULE, "ArchivePlayer", { username=username }) end
+end
+
+function LeaderboardPanel:onRestorePlayer()
+    local username = self.adminUsername and self.adminUsername:getText() or ""
+    if username ~= "" then sendClientCommand(SL.MODULE, "RestorePlayer", { username=username }) end
+end
+
+function LeaderboardPanel:onOpenDocs()
+    pcall(function()
+        if openUrl then openUrl("https://github.com/Z3R0-BYT3Z/Survivor-League-Community/blob/main/docs/getting_started.md") end
+    end)
 end
 
 function LeaderboardPanel:onTab(button)
@@ -336,12 +379,13 @@ function LeaderboardPanel:createChildren()
     self.tabButtons = {}
     self.adminControls = {}
     local tabs = {
-        {"leaderboard", "LEADERBOARD", 132},
-        {"stats", "MY STATS", 120},
-        {"history", "SEASON HISTORY", 152},
-        {"rewards", "REWARDS", 116},
+        {"leaderboard", L("Leaderboard", "LEADERBOARD"), 132},
+        {"stats", L("MyStats", "MY STATS"), 120},
+        {"history", L("History", "SEASON HISTORY"), 152},
+        {"rewards", L("Rewards", "REWARDS"), 116},
     }
-    if self.payload.isAdmin == true then tabs[#tabs + 1] = {"admin", "ADMIN", 92} end
+    if self.payload.canViewDiagnostics == true then tabs[#tabs + 1] = {"diagnostics", L("Status", "STATUS"), 92} end
+    if self.payload.isAdmin == true or self.payload.canManageScores == true or self.payload.canManageRewards == true or self.payload.canManageSeasons == true then tabs[#tabs + 1] = {"admin", L("Admin", "ADMIN"), 92} end
     local gap, totalWidth = 8, 0
     for _, tab in ipairs(tabs) do
         tab[3] = math.max(72, textWidth(tab[2], UIFont.Small) + 12)
@@ -370,7 +414,10 @@ function LeaderboardPanel:createChildren()
     if Appearance.allowOverride then
         self.themeButton = self:addCommandButton(self.width-250, 12, 174, 32, "THEME: "..string.upper(Appearance.id), LeaderboardPanel.onCycleTheme)
     end
-    self.refresh = self:addCommandButton(self.width-304, self.height-52, 142, 32, "REFRESH", LeaderboardPanel.onRefresh)
+    self.refresh = self:addCommandButton(self.width-304, self.height-52, 142, 32, L("Refresh", "REFRESH"), LeaderboardPanel.onRefresh)
+    self.searchEntry = ISTextEntryBox:new(tostring(self.payload.search or currentBoardSearch or ""), 20, 98, 230, 28)
+    self.searchEntry:initialise(); self:addChild(self.searchEntry)
+    self.searchButton = self:addCommandButton(258, 98, 52, 28, L("Search", "GO"), LeaderboardPanel.onSearch)
     local leaderboardCenter = 20 + math.floor((self.width * 0.64) / 2)
     self.previousPage = self:addCommandButton(leaderboardCenter-72, self.height-150, 46, 28, "<", LeaderboardPanel.onPreviousPage)
     self.nextPage = self:addCommandButton(leaderboardCenter+26, self.height-150, 46, 28, ">", LeaderboardPanel.onNextPage)
@@ -390,6 +437,17 @@ function LeaderboardPanel:createChildren()
     self.adminControls[#self.adminControls + 1] = self.correctScoreButton
     self.recoveryPreviewButton = self:addCommandButton(math.floor(self.width/2)-310, 466, 300, 34, "EXPORT LEGACY/CURRENT SCORES", LeaderboardPanel.onRecoveryPreview)
     self.settleButton = self:addCommandButton(math.floor(self.width/2)+10, 466, 300, 34, "SETTLE SEASON NOW", LeaderboardPanel.onSettleSeason)
+    self.retryRewardsButton = self:addCommandButton(formX, 508, 180, 30, L("RetryRewards", "RETRY REWARDS"), LeaderboardPanel.onRetryRewards)
+    self.archivePlayerButton = self:addCommandButton(formX+190, 508, 180, 30, L("ArchivePlayer", "ARCHIVE PLAYER"), LeaderboardPanel.onArchivePlayer)
+    self.restorePlayerButton = self:addCommandButton(formX+380, 508, 180, 30, L("RestorePlayer", "RESTORE PLAYER"), LeaderboardPanel.onRestorePlayer)
+    self.docsButton = self:addCommandButton(self.width-350, 12, 82, 32, "GUIDE", LeaderboardPanel.onOpenDocs)
+    self.adminControls[#self.adminControls + 1] = self.retryRewardsButton
+    self.adminControls[#self.adminControls + 1] = self.archivePlayerButton
+    self.adminControls[#self.adminControls + 1] = self.restorePlayerButton
+    self.correctScoreButton.enable = self.payload.canManageScores == true
+    self.archivePlayerButton.enable = self.payload.canManageScores == true
+    self.restorePlayerButton.enable = self.payload.canManageScores == true
+    self.retryRewardsButton.enable = self.payload.canManageRewards == true
     self:updateControls()
 end
 
@@ -430,12 +488,13 @@ function LeaderboardPanel:drawLeaderboard()
     local rowsPerPage = self:getRowsPerPage()
     self.currentPage = math.max(1, math.min(self.currentPage, self:getPageCount()))
     currentBoardPage = self.currentPage
-    local firstRank = ((self.currentPage-1)*rowsPerPage)+1
-    local lastRank = math.min(#rows, firstRank+rowsPerPage-1)
+    local firstRank = tonumber(self.payload.firstRank) or (((self.currentPage-1)*rowsPerPage)+1)
+    local lastRank = firstRank + #rows - 1
     local rowH = math.max(31, fontHeight(UIFont.Medium)+8)
-    for rank=firstRank,lastRank do
-        local visible = rank-firstRank
-        local row, y = rows[rank], top+46+(visible*rowH)
+    for index,row in ipairs(rows) do
+        local rank = tonumber(row.rank) or (firstRank + index - 1)
+        local visible = index-1
+        local y = top+46+(visible*rowH)
         local mine = tostring(row.username or "") == tostring(self.payload.username or "")
         -- Keep player highlighting neutral. Pink is reserved for borders,
         -- rank markers, and active controls in the original Command Center UI.
@@ -450,7 +509,8 @@ function LeaderboardPanel:drawLeaderboard()
         self:drawTextCentre(tostring(row.totalKills or 0),totalX+(totalW/2),y+6,C.text[1],C.text[2],C.text[3],1,UIFont.Medium)
         self:drawTextCentre(tostring(row.streakKills or 0),streakX+(streakW/2),y+6,C.text[1],C.text[2],C.text[3],1,UIFont.Medium)
     end
-    self:drawTextCentre(tostring(self.currentPage).." / "..tostring(self:getPageCount()),leftX+(leftW/2),self.height-143,C.text[1],C.text[2],C.text[3],1,UIFont.Small)
+    local filterText = tostring(self.payload.search or "") ~= "" and (" | FILTER: "..tostring(self.payload.search)) or ""
+    self:drawTextCentre(tostring(self.currentPage).." / "..tostring(self:getPageCount())..filterText,leftX+(leftW/2),self.height-143,C.text[1],C.text[2],C.text[3],1,UIFont.Small)
     self:drawRect(rightX,top,rightW,bottom-top,0.72,C.panel[1],C.panel[2],C.panel[3])
     self:drawRectBorder(rightX,top,rightW,bottom-top,0.8,C.line[1],C.line[2],C.line[3])
     drawCorners(self,rightX,top,rightW,bottom-top,C.accent)
@@ -467,7 +527,7 @@ function LeaderboardPanel:drawLeaderboard()
         self:drawRectBorder(rightX+16,y,rightW-32,76,0.85,accent[1],accent[2],accent[3])
         self:drawRectBorder(rightX+30,y+16,62,42,0.95,accent[1],accent[2],accent[3])
         drawTextCenteredInBox(self,labels[place],rightX+30,y+16,62,42,accent,UIFont.Medium)
-        self:drawText(fitText((self.payload.rewards or {})[place] or "No reward configured",rightW-132,UIFont.Small),rightX+106,y+27,C.text[1],C.text[2],C.text[3],1,UIFont.Small)
+        self:drawText(fitText((self.payload.rewards or {})[place] or L("NoReward", "No reward configured"),rightW-132,UIFont.Small),rightX+106,y+27,C.text[1],C.text[2],C.text[3],1,UIFont.Small)
     end
 end
 
@@ -494,7 +554,7 @@ function LeaderboardPanel:drawHistory()
         local yy=y+52+((i-1)*36); self:drawRect(x+14,yy,w-28,32,(i%2==1) and 0.75 or 0.5,C.rowA[1],C.rowA[2],C.rowA[3]); self:drawText("#"..tostring(entry.seasonId or "?"),x+28,yy+7,C.text[1],C.text[2],C.text[3],1,UIFont.Medium)
         for place=1,3 do local winner=(entry.winners or {})[place]; local xx=place==1 and x+170 or (place==2 and x+500 or x+820); self:drawText(winner and (shortText(winner.displayName or winner.username,20).." - "..tostring(winner.kills or 0).." kills") or "No qualifier",xx,yy+8,C.text[1],C.text[2],C.text[3],1,UIFont.Small) end
     end
-    if #(self.payload.history or {})==0 then self:drawTextCentre("No completed seasons yet",self.width/2,y+160,C.muted[1],C.muted[2],C.muted[3],1,UIFont.Medium) end
+    if #(self.payload.history or {})==0 then self:drawTextCentre(L("NoSeasons", "No completed seasons yet"),self.width/2,y+160,C.muted[1],C.muted[2],C.muted[3],1,UIFont.Medium) end
 end
 
 function LeaderboardPanel:drawRewards()
@@ -534,7 +594,21 @@ function LeaderboardPanel:drawAdmin()
     self:drawText("TOTAL",formX+usernameW+gap+numericW+gap,328,C.muted[1],C.muted[2],C.muted[3],1,UIFont.Small)
     self:drawText("STREAK",formX+usernameW+gap+numericW+gap+numericW+gap,328,C.muted[1],C.muted[2],C.muted[3],1,UIFont.Small)
     self:drawText("AUDIT REASON",formX,388,C.muted[1],C.muted[2],C.muted[3],1,UIFont.Small)
-    self:drawTextCentre("Recovery export is read-only; settling resets season kills but preserves lifetime totals.",self.width/2,516,C.muted[1],C.muted[2],C.muted[3],1,UIFont.Small)
+    self:drawTextCentre("Archive is reversible; settling resets season kills but preserves lifetime totals.",self.width/2,548,C.muted[1],C.muted[2],C.muted[3],1,UIFont.Small)
+end
+
+function LeaderboardPanel:drawDiagnostics()
+    local x,y,w,h=120,154,self.width-240,self.height-232
+    local diagnostics=self.payload.rewardDiagnostics or {}
+    self:drawRect(x,y,w,h,0.72,C.panel[1],C.panel[2],C.panel[3]); self:drawRectBorder(x,y,w,h,0.8,C.line[1],C.line[2],C.line[3]); drawCorners(self,x,y,w,h,C.accent)
+    self:drawTextCentre("SERVER STATUS // "..string.upper(tostring(self.payload.accessRole or "player")),self.width/2,y+24,C.text[1],C.text[2],C.text[3],1,UIFont.Medium)
+    self:drawText("PENDING REWARDS",x+42,y+78,C.muted[1],C.muted[2],C.muted[3],1,UIFont.Small); self:drawTextRight(tostring(diagnostics.total or 0),x+w-42,y+78,C.text[1],C.text[2],C.text[3],1,UIFont.Medium)
+    self:drawText("REWARDS WAITING TO RETRY",x+42,y+112,C.muted[1],C.muted[2],C.muted[3],1,UIFont.Small); self:drawTextRight(tostring(diagnostics.retrying or 0),x+w-42,y+112,C.text[1],C.text[2],C.text[3],1,UIFont.Medium)
+    self:drawText("RANKING TIE POLICY",x+42,y+146,C.muted[1],C.muted[2],C.muted[3],1,UIFont.Small); self:drawTextRight(tostring(self.payload.tiePolicy or 1),x+w-42,y+146,C.text[1],C.text[2],C.text[3],1,UIFont.Medium)
+    self:drawText("SETTLEMENT PREVIEW",x+42,y+200,C.accent[1],C.accent[2],C.accent[3],1,UIFont.Small)
+    for index,row in ipairs(self.payload.settlementPreview or {}) do
+        self:drawText("#"..tostring(row.place).."  "..tostring(row.displayName or row.username).."  //  "..tostring(row.kills).." kills",x+62,y+218+(index*34),C.text[1],C.text[2],C.text[3],1,UIFont.Medium)
+    end
 end
 
 function LeaderboardPanel:drawYourStatsStrip()
@@ -546,9 +620,9 @@ end
 function LeaderboardPanel:prerender()
     ISPanel.prerender(self)
     self:drawHeader()
-    if self.activeTab=="leaderboard" then self:drawLeaderboard() elseif self.activeTab=="stats" then self:drawStats() elseif self.activeTab=="history" then self:drawHistory() elseif self.activeTab=="rewards" then self:drawRewards() else self:drawAdmin() end
+    if self.activeTab=="leaderboard" then self:drawLeaderboard() elseif self.activeTab=="stats" then self:drawStats() elseif self.activeTab=="history" then self:drawHistory() elseif self.activeTab=="rewards" then self:drawRewards() elseif self.activeTab=="diagnostics" then self:drawDiagnostics() else self:drawAdmin() end
     if self.activeTab=="leaderboard" then self:drawYourStatsStrip() end
-    self:drawText("ONLINE",20,self.height-29,C.live[1],C.live[2],C.live[3],1,UIFont.Small)
+    self:drawText(L("Online", "ONLINE"),20,self.height-29,C.live[1],C.live[2],C.live[3],1,UIFont.Small)
     local interfaceKey = SL.getOptions().interfaceKey
     local closeText = interfaceKey == 64 and "F6 / X TO CLOSE" or ("KEY "..tostring(interfaceKey).." / X TO CLOSE")
     self:drawTextRight(closeText,self.width-24,self.height-29,C.muted[1],C.muted[2],C.muted[3],1,UIFont.Small)
@@ -608,9 +682,6 @@ local function retryPendingJoinAnnouncements(player)
     if #pendingJoinMessages == 0 then return end
     if player and getPlayer() and player ~= getPlayer() then return end
 
-    joinMessageRetryTicks = joinMessageRetryTicks + 1
-    if joinMessageRetryTicks % 30 ~= 0 then return end
-
     local pending = pendingJoinMessages[1]
     pending.attempts = pending.attempts + 1
     if showChatOnlyMessage("Survivor League", pending.message) then
@@ -650,6 +721,7 @@ local function onServerCommand(module, command, args)
     elseif command == "PlayerReadyAck" then
         if tonumber(args and args.protocol) == SL.PROTOCOL_VERSION and tonumber(args and args.version) == SL.VERSION then
             protocolCompatible = true
+            sessionToken = tostring(args and args.token or "")
             playerReadyPending = false
             print("[SurvivorLeagueCommunity] Client/server handshake accepted; F6 ready")
             if openAfterHandshake then
@@ -668,7 +740,7 @@ local function onServerCommand(module, command, args)
     elseif command == "ProtocolMismatch" then
         protocolCompatible = false
         playerReadyPending = false
-        showServerChatMessage("Survivor League client/server versions do not match. Update the mod before using the Command Center.")
+        showServerChatMessage(L("ProtocolMismatch", "Survivor League client/server versions do not match. Update the mod before using the Command Center."))
     elseif command == "MilestoneReward" then
         showServerChatMessage(
             "Kill-streak reward received: tier #"
@@ -684,6 +756,9 @@ local function onServerCommand(module, command, args)
         )
     elseif command == "ScoreCorrectionResult" then
         showServerChatMessage(args and args.ok and ("Survivor League score corrected for "..tostring(args.username)) or ("Score correction failed: "..tostring(args and args.reason or "unknown")))
+    elseif command == "AdminActionResult" then
+        local label = tostring(args and args.action or "Admin action")
+        showServerChatMessage(args and args.ok and (label.." completed for "..tostring(args.username or "player")) or (label.." failed: "..tostring(args and args.reason or "unknown")))
     elseif command == "ScoreReset"
         and getPlayer()
         and args.username == SL.playerKey(getPlayer())
@@ -702,8 +777,6 @@ local function retryPlayerReady(player)
     if not playerReadyPending then return end
     if player and getPlayer() and player ~= getPlayer() then return end
     if not getPlayer() then return end
-    playerReadyTicks = playerReadyTicks + 1
-    if playerReadyTicks % 300 ~= 0 then return end
     playerReadyAttempts = playerReadyAttempts + 1
     sendClientCommand(SL.MODULE, "PlayerReady", { protocol = SL.PROTOCOL_VERSION, version = SL.VERSION })
 end
@@ -726,24 +799,25 @@ local function reportLocalDeath(player)
     print("[SurvivorLeagueDeathRelay] Reporting local death to server")
     local kills = 0
     pcall(function() kills = math.max(0, math.floor(tonumber(p:getZombieKills()) or 0)) end)
-    sendClientCommand(SL.MODULE, "ReportDeath", { kills = kills })
+    reportSequence = reportSequence + 1
+    sendClientCommand(SL.MODULE, "ReportDeath", { kills = kills, token=sessionToken, sequence=reportSequence })
     lastReportedKills = -1
     lastAcknowledgedKills = -1
     pendingReportedKills = nil
     lastKillReportAt = 0
 end
 
-local function pollLocalKills(player)
+local function onLocalPlayerUpdate(player)
     if player and getPlayer() and player ~= getPlayer() then return end
-    killPollTicks = killPollTicks + 1
-    if killPollTicks % 120 == 0 then reportLocalKills(false) end
+    clientUpdateTicks = clientUpdateTicks + 1
+    if clientUpdateTicks % 30 == 0 then retryPendingJoinAnnouncements(player) end
+    if clientUpdateTicks % 120 == 0 then reportLocalKills(false) end
+    if clientUpdateTicks % 300 == 0 then retryPlayerReady(player) end
 end
 
 Events.OnServerCommand.Add(onServerCommand)
 Events.OnKeyPressed.Add(onKeyPressed)
 print("[SurvivorLeagueCommunity] Client loaded; interfaceKey="..tostring(SL.getOptions().interfaceKey))
-Events.OnPlayerUpdate.Add(pollLocalKills)
-Events.OnPlayerUpdate.Add(retryPlayerReady)
-Events.OnPlayerUpdate.Add(retryPendingJoinAnnouncements)
+Events.OnPlayerUpdate.Add(onLocalPlayerUpdate)
 if Events.OnPlayerDeath then Events.OnPlayerDeath.Add(reportLocalDeath) end
 if Events.OnCreatePlayer then Events.OnCreatePlayer.Add(reportPlayerReady) end

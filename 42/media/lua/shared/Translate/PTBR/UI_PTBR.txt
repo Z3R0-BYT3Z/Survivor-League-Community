@@ -1,0 +1,11 @@
+UI_PTBR = {
+    UI_SurvivorLeagueCommunity_Leaderboard = "CLASSIFICACAO",
+    UI_SurvivorLeagueCommunity_MyStats = "MINHAS ESTATISTICAS",
+    UI_SurvivorLeagueCommunity_History = "HISTORICO DA TEMPORADA",
+    UI_SurvivorLeagueCommunity_Rewards = "RECOMPENSAS",
+    UI_SurvivorLeagueCommunity_Status = "STATUS",
+    UI_SurvivorLeagueCommunity_Admin = "ADMIN",
+    UI_SurvivorLeagueCommunity_Search = "BUSCAR",
+    UI_SurvivorLeagueCommunity_Refresh = "ATUALIZAR",
+    UI_SurvivorLeagueCommunity_Online = "ONLINE",
+}
