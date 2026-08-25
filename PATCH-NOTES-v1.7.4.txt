@@ -1,0 +1,17 @@
+Survivor League v1.7.4
+
+- Fixed the killboard refresh error caused by numeric admin text fields calling
+  setOnlyNumbers before their Java UI objects existed.
+- Admin-only text fields and controls are now created only for authorized
+  moderator, overseer, or admin payloads.
+- Restored the restrained Meeks Protocol palette: neutral black/gray surfaces
+  and text with hot pink reserved for active accents and framing.
+- Bumped the client/server data version to 12 so mixed copies are rejected
+  instead of silently running incompatible UI code.
+
+Required test:
+1. Join as a regular player, open F6, and press Refresh repeatedly.
+2. Confirm no ADMIN tab or admin controls are created.
+3. Join as moderator/overseer/admin and verify numeric correction fields accept
+   digits without raising a Lua error.
+4. Confirm client and server both use v1.7.4 / data version 12.

@@ -144,20 +144,25 @@ local function activeDataset(value)
     return value.seasonId ~= nil or value.startedAt ~= nil or value.endsAt ~= nil
 end
 
+local function migrationScore(value)
+    return math.max(0, math.min(2147483647, math.floor(tonumber(value) or 0)))
+end
+
 local migrationChecked = false
 local function migrateLegacyMeeks(canonical)
     if migrationChecked then return end
     migrationChecked = true
-    if canonical.migrationVersion then
+    if canonical.legacyReconciliationVersion then
         SurvivorLeagueCommunity.USE_LEGACY_SETTINGS = canonical.useLegacyMeeksSettings == true
         return
     end
     local legacy = existingModData("SurvivorLeagueData")
     local canonicalActive, legacyActive = activeDataset(canonical), activeDataset(legacy)
-    if canonicalActive and legacyActive then
-        canonical.migrationConflict = true
-        canonical.migrationConflictAt = SL.now()
-        print("[SurvivorLeagueCommunityMigration] CONFLICT canonical and legacy Meeks datasets both contain data; no records were merged")
+    if not legacyActive then
+        canonical.legacyReconciliationVersion = 1
+        canonical.legacyReconciledAt = SL.now()
+        canonical.legacyReconciliationSummary = { imported = 0, baselined = 0, duplicate = 0, canonicalNewer = 0, review = 0 }
+        print("[SurvivorLeagueCommunityMigration] COMPLETE no active legacy dataset was found; one-time reconciliation marker saved")
         return
     end
     if not canonicalActive and legacyActive then
@@ -165,12 +170,113 @@ local function migrateLegacyMeeks(canonical)
         canonical.migratedFrom = "SurvivorLeagueData"
         canonical.migrationVersion = 1
         canonical.migratedAt = SL.now()
+        canonical.legacyReconciliationVersion = 1
+        canonical.legacyReconciledAt = canonical.migratedAt
         canonical.useLegacyMeeksSettings = true
         SurvivorLeagueCommunity.USE_LEGACY_SETTINGS = true
         local count = 0
         for _ in pairs(canonical.scores or {}) do count = count + 1 end
+        canonical.legacyReconciliationSummary = { imported = count, baselined = 0, duplicate = 0, canonicalNewer = 0, review = 0 }
         print("[SurvivorLeagueCommunityMigration] SUCCESS imported "..tostring(count).." records from SurvivorLeagueData; legacy data was preserved")
+        return
     end
+
+    -- Both datasets are active. Reconcile them once without ever deleting or
+    -- modifying the legacy table. Full score snapshots make the operation
+    -- auditable and recoverable from the server save.
+    canonical.scores = canonical.scores or {}
+    local legacyScores = type(legacy.scores) == "table" and legacy.scores or {}
+    local runAt = SL.now()
+    canonical.legacyReconciliationBackupV1 = {
+        createdAt = runAt,
+        canonicalScores = copyValue(canonical.scores),
+        legacyScores = copyValue(legacyScores),
+    }
+
+    local function identity(value)
+        return string.lower(sanitizeName(value or ""))
+    end
+
+    local canonicalByIdentity = {}
+    for key, record in pairs(canonical.scores) do
+        record = type(record) == "table" and record or {}
+        canonicalByIdentity[identity(record.username or key)] = { key = key, record = record }
+        canonicalByIdentity[identity(key)] = { key = key, record = record }
+    end
+
+    local summary = { imported = 0, baselined = 0, duplicate = 0, canonicalNewer = 0, review = 0 }
+    local review = {}
+    for legacyKey, legacyRecord in pairs(legacyScores) do
+        legacyRecord = type(legacyRecord) == "table" and legacyRecord or {}
+        local legacyUsername = legacyRecord.username or legacyKey
+        local match = canonicalByIdentity[identity(legacyUsername)] or canonicalByIdentity[identity(legacyKey)]
+
+        if not match then
+            local imported = copyValue(legacyRecord)
+            imported.username = imported.username or legacyKey
+            imported.displayName = imported.displayName or imported.username
+            imported.kills = migrationScore(imported.kills)
+            imported.totalKills = migrationScore(imported.totalKills or imported.kills)
+            imported.streakKills = migrationScore(imported.streakKills)
+            imported.bestStreak = migrationScore(imported.bestStreak)
+            canonical.scores[legacyKey] = imported
+            canonicalByIdentity[identity(imported.username)] = { key = legacyKey, record = imported }
+            canonicalByIdentity[identity(legacyKey)] = { key = legacyKey, record = imported }
+            summary.imported = summary.imported + 1
+            print("[SurvivorLeagueCommunityMigration] IMPORTED legacy-only player | user=" .. tostring(imported.username)
+                .. " | season=" .. tostring(imported.kills) .. " | total=" .. tostring(imported.totalKills))
+        else
+            local current = match.record
+            local currentSeason = migrationScore(current.kills)
+            local currentTotal = migrationScore(current.totalKills or current.kills)
+            local currentHistorical = math.max(0, currentTotal - currentSeason)
+            local legacySeason = migrationScore(legacyRecord.kills)
+            local legacyTotal = migrationScore(legacyRecord.totalKills or legacyRecord.kills)
+
+            if currentSeason == legacySeason and currentTotal == legacyTotal then
+                summary.duplicate = summary.duplicate + 1
+            elseif currentHistorical >= legacyTotal then
+                summary.canonicalNewer = summary.canonicalNewer + 1
+            elseif legacySeason == 0 and legacyTotal > currentHistorical then
+                local correctedTotal = migrationScore(legacyTotal + currentSeason)
+                current.totalKills = correctedTotal
+                current.bestStreak = math.max(migrationScore(current.bestStreak), migrationScore(legacyRecord.bestStreak))
+                current.legacyBaselineImported = legacyTotal
+                current.legacyBaselineImportedAt = runAt
+                summary.baselined = summary.baselined + 1
+                print("[SurvivorLeagueCommunityMigration] BASELINED player | user=" .. tostring(current.username or match.key)
+                    .. " | historical=" .. tostring(currentHistorical) .. "->" .. tostring(legacyTotal)
+                    .. " | season=" .. tostring(currentSeason) .. " | total=" .. tostring(currentTotal) .. "->" .. tostring(correctedTotal))
+            else
+                summary.review = summary.review + 1
+                review[#review + 1] = {
+                    username = tostring(current.username or match.key),
+                    canonicalSeason = currentSeason,
+                    canonicalTotal = currentTotal,
+                    legacySeason = legacySeason,
+                    legacyTotal = legacyTotal,
+                }
+                print("[SurvivorLeagueCommunityMigration] REVIEW ambiguous overlap; no score changed | user="
+                    .. tostring(current.username or match.key)
+                    .. " | canonicalSeason=" .. tostring(currentSeason) .. " | canonicalTotal=" .. tostring(currentTotal)
+                    .. " | legacySeason=" .. tostring(legacySeason) .. " | legacyTotal=" .. tostring(legacyTotal))
+            end
+        end
+    end
+
+    canonical.legacyReconciliationReview = review
+    canonical.legacyReconciliationSummary = summary
+    canonical.legacyReconciliationVersion = 1
+    canonical.legacyReconciledAt = runAt
+    canonical.migrationConflict = summary.review > 0
+    canonical.migrationConflictAt = summary.review > 0 and runAt or nil
+    print("[SurvivorLeagueCommunityMigration] COMPLETE one-time reconciliation"
+        .. " | imported=" .. tostring(summary.imported)
+        .. " | baselined=" .. tostring(summary.baselined)
+        .. " | duplicate=" .. tostring(summary.duplicate)
+        .. " | canonicalNewer=" .. tostring(summary.canonicalNewer)
+        .. " | review=" .. tostring(summary.review)
+        .. " | legacy data preserved")
 end
 
 local function data()
@@ -931,11 +1037,32 @@ local function correctScore(actor, targetUsername, seasonKills, totalKills, stre
     record.totalKills = correctedTotal
     record.streakKills = correctedStreak
     record.bestStreak = math.max(clampScore(record.bestStreak), correctedStreak)
+
+    -- Keep an online target's vanilla baseline aligned with the corrected
+    -- score. Without this, a pending client report can immediately award an
+    -- already-earned kill a second time after the correction.
+    local livePlayer = compatibleClients[target]
+    local correctedBaseline = nil
+    if livePlayer and SL.playerKey(livePlayer) == target then
+        correctedBaseline = safeKills(livePlayer)
+        record.lastVanillaKills = correctedBaseline
+        if record.clientKillSync or SL.getOptions().allowClientKillReports then
+            record.clientKillSync = true
+            record.lastClientKills = correctedBaseline
+            clientKillReportTimes[target] = SL.now()
+        end
+        local state = runtime[target] or {}
+        state.lastKills = correctedBaseline
+        state.lastHours = hoursSurvived and hoursSurvived(livePlayer) or 0
+        state.lastCharacter = characterName(livePlayer)
+        runtime[target] = state
+    end
     print("[SurvivorLeagueCommunityScoreCorrection] actor=" .. tostring(actorKey)
         .. " | target=" .. tostring(target)
         .. " | season=" .. tostring(beforeSeason) .. "->" .. tostring(correctedSeason)
         .. " | total=" .. tostring(beforeTotal) .. "->" .. tostring(correctedTotal)
         .. " | streak=" .. tostring(beforeStreak) .. "->" .. tostring(correctedStreak)
+        .. " | vanillaBaseline=" .. tostring(correctedBaseline or "unchanged-offline")
         .. " | reason=" .. sanitizeName(reason or "manual correction"))
     ModData.transmit(SL.DATA_KEY)
     return true, record

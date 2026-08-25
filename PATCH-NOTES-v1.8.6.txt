@@ -1,0 +1,14 @@
+Survivor League Community v1.8.6
+
+JOIN CHAT DELIVERY FIX
+
+- Player login notices now appear in the in-game chat only.
+- Login notices no longer use Build 42's red server-alert presentation.
+- Discord relay compatibility is unchanged: the server continues to write the
+  structured [SurvivorLeagueCommunityJoin] log marker.
+- Death and administrative announcement behavior is unchanged.
+
+INSTALLATION
+
+Upload the complete v1.8.6 Workshop package. Install the update on both the
+server and clients, then restart the server once so the updated Lua loads.

@@ -1,7 +1,7 @@
 SurvivorLeagueCommunity = SurvivorLeagueCommunity or {}
 SurvivorLeagueCommunity.MODULE = "SurvivorLeagueCommunity"
 SurvivorLeagueCommunity.DATA_KEY = "SurvivorLeagueCommunityData"
-SurvivorLeagueCommunity.VERSION = 12
+SurvivorLeagueCommunity.VERSION = 16
 SurvivorLeagueCommunity.PROTOCOL_VERSION = 4
 
 SurvivorLeagueCommunity.THEMES = {
