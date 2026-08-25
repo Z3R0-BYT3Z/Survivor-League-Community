@@ -1,0 +1,16 @@
+Survivor League Community v1.8.5
+================================
+
+ONE-TIME LEGACY SCORE RECONCILIATION
+
+- Reconciles legacy and canonical score tables once when both contain data.
+- Imports legacy-only players automatically.
+- Restores clear historical baselines without resetting current-season kills or streaks.
+- Leaves ambiguous overlaps unchanged and lists them in the server log for review.
+- Saves full pre-migration score snapshots and preserves the legacy dataset.
+- Writes a permanent reconciliation marker so the migration cannot run twice.
+
+The server log summary begins with:
+[SurvivorLeagueCommunityMigration] COMPLETE one-time reconciliation
+
+Install the complete v1.8.5 package on both the server and clients, then restart the server once.
