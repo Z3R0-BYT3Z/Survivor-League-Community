@@ -18,6 +18,7 @@ local pendingJoinMessages = {}
 local joinMessageRetryTicks = 0
 local lastBoardRequestAt = 0
 local protocolCompatible = false
+local openAfterHandshake = false
 local Appearance = SL.getAppearance(nil)
 local C = Appearance.palette
 
@@ -172,6 +173,18 @@ local function fitText(value, maximumWidth, font)
     return best ~= "" and best or suffix
 end
 
+local function wrapTwoLines(value, maximumWidth, font)
+    local text = tostring(value or "")
+    if textWidth(text, font) <= maximumWidth then return text, nil end
+    local first, second = "", ""
+    for word in string.gmatch(text, "%S+") do
+        local candidate = first == "" and word or (first .. " " .. word)
+        if first == "" or textWidth(candidate, font) <= maximumWidth then first = candidate
+        else second = second == "" and word or (second .. " " .. word) end
+    end
+    return fitText(first, maximumWidth, font), second ~= "" and fitText(second, maximumWidth, font) or nil
+end
+
 local function drawCorners(self, x, y, w, h, color)
     local r, g, b, a = color[1], color[2], color[3], color[4] or 1
     local n = 16
@@ -191,13 +204,25 @@ function LeaderboardPanel:new(payload)
     o.backgroundColor = {r=C.bg[1],g=C.bg[2],b=C.bg[3],a=C.bg[4]}
     o.borderColor = {r=C.accent[1],g=C.accent[2],b=C.accent[3],a=0.92}
     o.moveWithMouse = true
-    o.currentPage = math.max(1, math.min(currentBoardPage, math.max(1, math.ceil(#(o.payload.rows or {}) / 10))))
+    o.currentPage = math.max(1, currentBoardPage)
     o.activeTab = "leaderboard"
     return o
 end
 
+function LeaderboardPanel:getRowsPerPage()
+    -- The game scales UIFont sizes independently of screen resolution. A
+    -- fixed ten-row page therefore overlaps pagination and the stats strip at
+    -- larger UI/font scales. Derive the page size from the actual rendered
+    -- row height and the space reserved for the leaderboard.
+    local top = 148
+    local bottom = self.height - 168
+    local firstRowY = top + 46
+    local rowH = math.max(31, fontHeight(UIFont.Medium) + 8)
+    return math.max(3, math.floor((bottom - firstRowY) / rowH))
+end
+
 function LeaderboardPanel:getPageCount()
-    return math.max(1, math.ceil(#(self.payload.rows or {}) / 10))
+    return math.max(1, math.ceil(#(self.payload.rows or {}) / self:getRowsPerPage()))
 end
 
 function LeaderboardPanel:updateControls()
@@ -317,9 +342,9 @@ function LeaderboardPanel:createChildren()
         {"rewards", "REWARDS", 116},
     }
     if self.payload.isAdmin == true then tabs[#tabs + 1] = {"admin", "ADMIN", 92} end
-    local gap, totalWidth = 5, 0
+    local gap, totalWidth = 8, 0
     for _, tab in ipairs(tabs) do
-        tab[3] = math.max(76, textWidth(tab[2], UIFont.Small) + 20)
+        tab[3] = math.max(72, textWidth(tab[2], UIFont.Small) + 12)
         totalWidth = totalWidth + tab[3]
     end
     totalWidth = totalWidth + ((#tabs - 1) * gap)
@@ -329,7 +354,7 @@ function LeaderboardPanel:createChildren()
         local scale = available / totalWidth
         totalWidth = 0
         for _, tab in ipairs(tabs) do
-            tab[3] = math.max(68, math.floor(tab[3] * scale))
+            tab[3] = math.max(64, math.floor(tab[3] * scale))
             totalWidth = totalWidth + tab[3]
         end
         totalWidth = totalWidth + ((#tabs - 1) * gap)
@@ -402,8 +427,11 @@ function LeaderboardPanel:drawLeaderboard()
     self:drawTextCentre("STREAK",streakX+(streakW/2),top+16,C.muted[1],C.muted[2],C.muted[3],1,UIFont.Small)
     self:drawRect(leftX+12,top+39,leftW-24,1,0.7,C.line[1],C.line[2],C.line[3])
     local rows = self.payload.rows or {}
-    local firstRank = ((self.currentPage-1)*10)+1
-    local lastRank = math.min(#rows, firstRank+9)
+    local rowsPerPage = self:getRowsPerPage()
+    self.currentPage = math.max(1, math.min(self.currentPage, self:getPageCount()))
+    currentBoardPage = self.currentPage
+    local firstRank = ((self.currentPage-1)*rowsPerPage)+1
+    local lastRank = math.min(#rows, firstRank+rowsPerPage-1)
     local rowH = math.max(31, fontHeight(UIFont.Medium)+8)
     for rank=firstRank,lastRank do
         local visible = rank-firstRank
@@ -474,7 +502,7 @@ function LeaderboardPanel:drawRewards()
     self:drawRect(x,y,w,h,0.72,C.panel[1],C.panel[2],C.panel[3]); self:drawRectBorder(x,y,w,h,0.8,C.line[1],C.line[2],C.line[3]); drawCorners(self,x,y,w,h,C.accent)
     self:drawTextCentre("SEASON PODIUM REWARDS | MINIMUM "..tostring(self.payload.minimumKills or 0).." KILLS",self.width/2,y+20,C.text[1],C.text[2],C.text[3],1,UIFont.Medium)
     local labels={"1ST","2ND","3RD"}
-    for place=1,3 do local yy=y+54+((place-1)*72); local accent=rankColor(place); local rewardW=math.floor(w*0.43); self:drawRect(x+28,yy,rewardW,58,0.84,C.rowB[1],C.rowB[2],C.rowB[3]); self:drawRectBorder(x+28,yy,rewardW,58,0.9,accent[1],accent[2],accent[3]); self:drawText(labels[place],x+46,yy+18,accent[1],accent[2],accent[3],1,UIFont.Medium); self:drawText(fitText((self.payload.rewards or {})[place] or "No reward configured",rewardW-96,UIFont.Small),x+112,yy+20,C.text[1],C.text[2],C.text[3],1,UIFont.Small) end
+    for place=1,3 do local yy=y+54+((place-1)*72); local accent=rankColor(place); local rewardW=math.floor(w*0.43); self:drawRect(x+28,yy,rewardW,58,0.84,C.rowB[1],C.rowB[2],C.rowB[3]); self:drawRectBorder(x+28,yy,rewardW,58,0.9,accent[1],accent[2],accent[3]); self:drawText(labels[place],x+46,yy+18,accent[1],accent[2],accent[3],1,UIFont.Medium); local line1,line2=wrapTwoLines((self.payload.rewards or {})[place] or "No reward configured",rewardW-96,UIFont.Small); self:drawText(line1,x+112,yy+(line2 and 10 or 20),C.text[1],C.text[2],C.text[3],1,UIFont.Small); if line2 then self:drawText(line2,x+112,yy+30,C.text[1],C.text[2],C.text[3],1,UIFont.Small) end end
     local streakX=x+math.floor(w*0.48); self:drawText("KILL-STREAK REWARDS | ONCE PER LIFE",streakX,y+54,C.text[1],C.text[2],C.text[3],1,UIFont.Small)
     for i,reward in ipairs(self.payload.killStreakRewards or {}) do
         if i>5 then break end
@@ -548,10 +576,30 @@ local function showServerChatMessage(message)
     return displayed
 end
 
+-- Adds a local chat-line on every connected client without using
+-- showServerChatMessage(), whose ServerChatMessage is rendered as a red
+-- server alert by Build 42. The server already broadcasts JoinAnnouncement
+-- to every client, so this remains a server-wide in-game chat message.
+local function showChatOnlyMessage(author, message)
+    local displayed = false
+    pcall(function()
+        local chatClass = ChatManager
+        if not chatClass and luajava and luajava.bindClass then
+            chatClass = luajava.bindClass("zombie.chat.ChatManager")
+        end
+        local chat = chatClass and chatClass.getInstance and chatClass.getInstance()
+        if chat and (not chat.isWorking or chat:isWorking()) then
+            chat:addMessage(tostring(author or "Survivor League"), tostring(message or ""))
+            displayed = true
+        end
+    end)
+    return displayed
+end
+
 local function showJoinAnnouncement(args)
     local message = tostring(args and args.message or "A survivor has connected.")
     print("[SurvivorLeagueCommunityJoin] " .. message)
-    if not showServerChatMessage(message) then
+    if not showChatOnlyMessage("Survivor League", message) then
         table.insert(pendingJoinMessages, { message = message, attempts = 0 })
     end
 end
@@ -565,7 +613,7 @@ local function retryPendingJoinAnnouncements(player)
 
     local pending = pendingJoinMessages[1]
     pending.attempts = pending.attempts + 1
-    if showServerChatMessage(pending.message) then
+    if showChatOnlyMessage("Survivor League", pending.message) then
         table.remove(pendingJoinMessages, 1)
     elseif pending.attempts >= 20 then
         print("[SurvivorLeagueCommunityJoin] Chat unavailable; discarded queued announcement")
@@ -603,6 +651,11 @@ local function onServerCommand(module, command, args)
         if tonumber(args and args.protocol) == SL.PROTOCOL_VERSION and tonumber(args and args.version) == SL.VERSION then
             protocolCompatible = true
             playerReadyPending = false
+            print("[SurvivorLeagueCommunity] Client/server handshake accepted; F6 ready")
+            if openAfterHandshake then
+                openAfterHandshake = false
+                refreshBoard()
+            end
         end
     elseif command == "KillReportAck" then
         local acknowledged = math.max(0, math.floor(tonumber(args and args.kills) or 0))
@@ -658,6 +711,7 @@ end
 local function onKeyPressed(key)
     if key ~= SL.getOptions().interfaceKey then return end
     if not protocolCompatible then
+        openAfterHandshake = true
         beginPlayerReady(nil, getPlayer and getPlayer())
         return
     end
@@ -687,6 +741,7 @@ end
 
 Events.OnServerCommand.Add(onServerCommand)
 Events.OnKeyPressed.Add(onKeyPressed)
+print("[SurvivorLeagueCommunity] Client loaded; interfaceKey="..tostring(SL.getOptions().interfaceKey))
 Events.OnPlayerUpdate.Add(pollLocalKills)
 Events.OnPlayerUpdate.Add(retryPlayerReady)
 Events.OnPlayerUpdate.Add(retryPendingJoinAnnouncements)
