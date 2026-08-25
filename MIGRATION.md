@@ -18,7 +18,9 @@ Canonical release:
 
 If `SurvivorLeagueCommunityData` is empty and `SurvivorLeagueData` contains data, the canonical mod copies the legacy dataset and records a migration marker. The legacy table is never deleted.
 
-If both datasets contain data, no merge occurs. The server logs `CONFLICT`; stop it and decide which dataset should remain canonical before continuing.
+If both datasets contain data, version 1.8.5 performs one guarded reconciliation. Legacy-only players are imported, and a legacy record with zero season kills may supply a missing historical baseline without changing the canonical current-season score or streak. Exact duplicates and canonical records that already contain the legacy history are left unchanged. Ambiguous overlaps are logged as `REVIEW` and are not changed automatically.
+
+Before reconciliation, the server stores complete canonical and legacy score snapshots in `legacyReconciliationBackupV1`. The legacy `SurvivorLeagueData` table is never modified or deleted. After the first completed pass, `legacyReconciliationVersion=1` prevents the migration from running again.
 
 After a successful legacy migration, server gameplay settings temporarily fall back to the old `SurvivorLeague` Sandbox namespace while `LegacyMeeksSettingsFallback` remains enabled. Copy the intended settings into the canonical namespace, verify them, and then disable the fallback.
 
