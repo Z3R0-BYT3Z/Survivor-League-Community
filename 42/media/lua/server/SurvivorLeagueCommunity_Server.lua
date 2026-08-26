@@ -382,6 +382,8 @@ local function recordFor(player)
     if r.streakKills == nil then r.streakKills = 0 end
     r.streakMilestonesGranted = r.streakMilestonesGranted or {}
     r.streakMilestoneDelivery = r.streakMilestoneDelivery or {}
+    r.accountName = sanitizeName(accountName(player))
+    r.characterName = sanitizeName(characterName(player))
     r.displayName = displayNameFor(player, SL.getOptions().nameFormat)
     r.lastSeenAt = SL.now()
     return key, r
@@ -393,6 +395,8 @@ local function sortedScores()
         rows[#rows + 1] = {
             username = sanitizeName(r.username),
             displayName = sanitizeName(r.displayName),
+            accountName = sanitizeName(r.accountName or r.username),
+            characterName = sanitizeName(r.characterName or r.displayName or r.username),
             kills = tonumber(r.kills) or 0,
             totalKills = tonumber(r.totalKills) or tonumber(r.kills) or 0,
             streakKills = tonumber(r.streakKills) or 0,
@@ -1241,6 +1245,8 @@ sendBoard = function(player, request)
             winners[place] = {
                 username = winner.username,
                 displayName = winner.displayName,
+                accountName = winner.accountName or winner.username,
+                characterName = winner.characterName or winner.displayName,
                 kills = tonumber(winner.kills) or 0,
             }
         end
@@ -1275,6 +1281,9 @@ sendBoard = function(player, request)
         leaderboardSize = opts.leaderboardSize,
         nameFormat = opts.nameFormat,
         myStats = {
+            username = tostring(myRecord and myRecord.username or username or "Survivor"),
+            accountName = tostring(myRecord and myRecord.accountName or username or "Survivor"),
+            characterName = tostring(myRecord and myRecord.characterName or myRecord and myRecord.displayName or username or "Survivor"),
             rank = myRank,
             kills = tonumber(myRecord and myRecord.kills) or 0,
             totalKills = tonumber(myRecord and myRecord.totalKills) or 0,

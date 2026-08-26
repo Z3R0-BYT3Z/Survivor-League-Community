@@ -1,0 +1,14 @@
+Survivor League Community v1.9.0
+
+- Refined the F6 Command Center layout and identity display.
+- Account usernames are now preferred throughout the leaderboard, My Stats,
+  and Season History, with safe display/character-name fallbacks.
+- Server payloads preserve username, display name, account name, and character
+  name as separate values.
+- GUIDE now opens a valid project page or shows the URL in chat and console.
+- Preserved the v1.8.6 chat-only join messages and structured relay logging.
+- Existing standings, season history, Sandbox settings, and migration records
+  remain compatible.
+
+Both clients and the server must install the complete v1.9.0 package. A server
+restart is required after updating.

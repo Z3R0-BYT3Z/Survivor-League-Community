@@ -41,9 +41,11 @@ def main() -> None:
     sandbox = (ROOT / "42/media/sandbox-options.txt").read_text(encoding="utf-8-sig")
     config = (ROOT / "42/media/lua/shared/SurvivorLeagueCommunity_Config.lua").read_text(encoding="utf-8-sig")
     option_names = set(re.findall(rf"\boption\s+{PREFIX}\.([A-Za-z0-9_]+)", sandbox))
-    if "LeaderboardSize" not in option_names: fail("LeaderboardSize is missing from sandbox-options.txt")
     config_names = set(re.findall(r"\broot\.([A-Za-z0-9_]+)", config))
     config_names.update(f"JoinMessage{i}" for i in range(1,21))
+    # LeaderboardSize is deliberately hidden in new presets. The config still
+    # reads it so existing server presets remain backward-compatible.
+    config_names.discard("LeaderboardSize")
     missing_options = sorted(config_names - option_names)
     if missing_options: fail("Config keys missing Sandbox options: " + ", ".join(missing_options))
     txt = (ROOT / "42/media/lua/shared/Translate/EN/Sandbox_EN.txt").read_text(encoding="utf-8-sig")

@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.9.0
+
+- Refined Command Center spacing and identity presentation.
+- Leaderboard, My Stats, and Season History now prioritize account usernames while retaining display and character-name fallbacks.
+- Server payloads now carry `username`, `displayName`, `accountName`, and `characterName` separately.
+- GUIDE now uses a valid project URL and displays the URL in chat/logs when the game cannot open a browser.
+- Added the GUIDE fallback localization key.
+- Corrected release metadata and auditing for the intentionally hidden legacy `LeaderboardSize` preset option.
+- Bumped the internal handshake version to prevent mixed 1.8.6 and 1.9.0 installations.
+
 ## 1.8.6
 
 - Changed player join notices to use chat-only delivery on each client.

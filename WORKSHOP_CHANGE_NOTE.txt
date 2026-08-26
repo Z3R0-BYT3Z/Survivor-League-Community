@@ -1,1 +1,1 @@
-v1.8.6 keeps player login notices in in-game chat without triggering Build 42's red server-alert display. Structured SurvivorLeagueCommunityJoin logging remains unchanged for Discord and website relays. Death and administrative notices are unchanged.
+v1.9.0 refines Command Center spacing, prioritizes account usernames throughout the interface, sends separate account/display/character identity fields, and adds a reliable GUIDE URL fallback. Existing standings and relay logging remain compatible.

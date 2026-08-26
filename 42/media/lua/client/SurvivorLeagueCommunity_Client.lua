@@ -326,9 +326,20 @@ function LeaderboardPanel:onRestorePlayer()
 end
 
 function LeaderboardPanel:onOpenDocs()
-    pcall(function()
-        if openUrl then openUrl("https://github.com/Z3R0-BYT3Z/Survivor-League-Community/blob/main/docs/getting_started.md") end
+    local url = "https://github.com/Z3R0-BYT3Z/Survivor-League-Community#readme"
+    local opened = false
+    local ok = pcall(function()
+        if type(openUrl) == "function" then
+            local result = openUrl(url)
+            opened = result ~= false
+        end
     end)
+    if not ok or not opened then
+        local message = L("GuideFallback", "Survivor League guide: {url}")
+        message = tostring(message):gsub("{url}", url)
+        showServerChatMessage(message)
+        print("[SurvivorLeagueCommunity] " .. message)
+    end
 end
 
 function LeaderboardPanel:onTab(button)
@@ -504,7 +515,7 @@ function LeaderboardPanel:drawLeaderboard()
         local rankBoxW = math.max(42, rankW-10)
         self:drawRectBorder(rankX+5,y+3,rankBoxW,rowH-8,0.85,accent[1],accent[2],accent[3])
         drawTextCenteredInBox(self,tostring(rank),rankX+5,y+3,rankBoxW,rowH-8,accent,UIFont.Medium)
-        self:drawText(fitText(row.displayName or row.username,survivorW-12,UIFont.Medium),survivorX+6,y+6,C.text[1],C.text[2],C.text[3],1,UIFont.Medium)
+        self:drawText(fitText(row.username or row.displayName or row.characterName,survivorW-12,UIFont.Medium),survivorX+6,y+6,C.text[1],C.text[2],C.text[3],1,UIFont.Medium)
         self:drawTextCentre(tostring(row.kills or 0),seasonX+(seasonW/2),y+6,C.text[1],C.text[2],C.text[3],1,UIFont.Medium)
         self:drawTextCentre(tostring(row.totalKills or 0),totalX+(totalW/2),y+6,C.text[1],C.text[2],C.text[3],1,UIFont.Medium)
         self:drawTextCentre(tostring(row.streakKills or 0),streakX+(streakW/2),y+6,C.text[1],C.text[2],C.text[3],1,UIFont.Medium)
@@ -535,7 +546,7 @@ function LeaderboardPanel:drawStats()
     local stats = self.payload.myStats or {}
     local x, y, w, h = 20, 154, self.width-40, self.height-232
     self:drawRect(x,y,w,h,0.72,C.panel[1],C.panel[2],C.panel[3]); self:drawRectBorder(x,y,w,h,0.8,C.line[1],C.line[2],C.line[3]); drawCorners(self,x,y,w,h,C.accent)
-    self:drawTextCentre(tostring(stats.displayName or self.payload.username or "SURVIVOR"),self.width/2,y+28,C.text[1],C.text[2],C.text[3],1,UIFont.Large)
+    self:drawTextCentre(tostring(stats.username or self.payload.username or stats.displayName or stats.characterName or "SURVIVOR"),self.width/2,y+28,C.text[1],C.text[2],C.text[3],1,UIFont.Large)
     local cards={{"YOUR RANK",stats.rank or 0},{"SEASON KILLS",stats.kills or 0},{"TOTAL KILLS",stats.totalKills or 0},{"CURRENT STREAK",stats.streakKills or 0},{"BEST STREAK",stats.bestStreak or 0}}
     local cardW=(w-72)/5
     for i,card in ipairs(cards) do
@@ -552,7 +563,7 @@ function LeaderboardPanel:drawHistory()
     for i,entry in ipairs(self.payload.history or {}) do
         if i>10 then break end
         local yy=y+52+((i-1)*36); self:drawRect(x+14,yy,w-28,32,(i%2==1) and 0.75 or 0.5,C.rowA[1],C.rowA[2],C.rowA[3]); self:drawText("#"..tostring(entry.seasonId or "?"),x+28,yy+7,C.text[1],C.text[2],C.text[3],1,UIFont.Medium)
-        for place=1,3 do local winner=(entry.winners or {})[place]; local xx=place==1 and x+170 or (place==2 and x+500 or x+820); self:drawText(winner and (shortText(winner.displayName or winner.username,20).." - "..tostring(winner.kills or 0).." kills") or "No qualifier",xx,yy+8,C.text[1],C.text[2],C.text[3],1,UIFont.Small) end
+        for place=1,3 do local winner=(entry.winners or {})[place]; local xx=place==1 and x+170 or (place==2 and x+500 or x+820); self:drawText(winner and (shortText(winner.username or winner.displayName or winner.characterName,20).." - "..tostring(winner.kills or 0).." kills") or "No qualifier",xx,yy+8,C.text[1],C.text[2],C.text[3],1,UIFont.Small) end
     end
     if #(self.payload.history or {})==0 then self:drawTextCentre(L("NoSeasons", "No completed seasons yet"),self.width/2,y+160,C.muted[1],C.muted[2],C.muted[3],1,UIFont.Medium) end
 end

@@ -14,4 +14,5 @@ UI_EN = {
     UI_SurvivorLeagueCommunity_NoReward = "No reward configured",
     UI_SurvivorLeagueCommunity_NoSeasons = "No completed seasons yet",
     UI_SurvivorLeagueCommunity_ProtocolMismatch = "Survivor League client/server versions do not match. Update the mod before using the Command Center.",
+    UI_SurvivorLeagueCommunity_GuideFallback = "Survivor League guide: {url}",
 }
