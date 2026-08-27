@@ -69,6 +69,18 @@ def main() -> None:
         fail("Font-measured box label centering is missing")
     if "textWidth(tab[2], UIFont.Small)" not in client or "wrapTwoLines" not in client:
         fail("Responsive tab sizing or two-line reward wrapping is missing")
+    if "pageSize = 10" in client or "rowsPerPageForHeight" not in client:
+        fail("Responsive leaderboard request sizing is missing")
+    if "if index > rowsPerPage then break end" not in client:
+        fail("Defensive leaderboard row clipping is missing")
+    if "requestId = boardRequestSequence" not in client or "responseId < boardRequestSequence" not in client:
+        fail("Stale leaderboard response protection is missing")
+    if 'requestId = math.max(0, math.floor(tonumber(request.requestId) or 0))' not in server:
+        fail("Server leaderboard response correlation is missing")
+    if 'trackingMode = opts.allowClientKillReports' not in server or "CLIENT-FALLBACK TRACKING" not in client:
+        fail("Truthful synchronization-mode reporting is missing")
+    if 'fitText(string.upper(Appearance.title), 300, UIFont.Large)' in client:
+        fail("Duplicate navigation-row branding still collides with search controls")
     if "serverPollTicks[key]" not in server:
         fail("Independent per-player server polling is missing")
     if "opts.clientKillMaxPerMinute" not in server or "KillReportAck" not in server:

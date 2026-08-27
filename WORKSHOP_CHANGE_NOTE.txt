@@ -1,1 +1,1 @@
-v1.9.0 refines Command Center spacing, prioritizes account usernames throughout the interface, sends separate account/display/character identity fields, and adds a reliable GUIDE URL fallback. Existing standings and relay logging remain compatible.
+v1.9.1 fixes Command Center row, pagination, stats, search, and footer overlap; adds responsive page sizing, stale-response protection, wrapped rewards, measured vertical alignment, and an accurate tracking-mode label.
