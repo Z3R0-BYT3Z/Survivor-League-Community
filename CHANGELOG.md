@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.10.0
+
+- Added hybrid score-source attribution for server, client-fallback, and administrator corrections.
+- Added a pure scoring policy with rate and reliable-server comparison safeguards.
+- Suspicious client reports are quarantined for administrator review and are no longer silently rebased.
+- Unverified fallback increases withhold milestone rewards by default; trusted servers can opt in.
+- Added persistent data schema 2 with idempotent upgrades and quarantine/source totals.
+- Expanded startup validation across podium and streak items, perks, and traits.
+- Added quarantine diagnostics to the status panel.
+- Corrected client-fallback and Moderator/Overseer documentation.
+- Completed UI key parity for German, Italian, and Brazilian Portuguese.
+- Added scoring-policy tests and stronger release/localization/version audits.
+- Retained all responsive Command Center fixes from v1.9.1.
+
 ## 1.9.1
 
 - Made leaderboard page size responsive to the panel height and active UI font scale.

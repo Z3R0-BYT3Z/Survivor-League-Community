@@ -3,8 +3,10 @@ local lastJoinMessageIndex = nil
 
 require "SurvivorLeagueCommunity_Config"
 require "SurvivorLeagueCommunity_Localization"
+require "SurvivorLeagueCommunity_ScoringPolicy"
 
 local SL = SurvivorLeagueCommunity
+local CURRENT_SCHEMA_VERSION = 2
 local runtime = {}
 local announceDeath
 local announceKills
@@ -323,6 +325,23 @@ end
 local function data()
     local d = ModData.getOrCreate(SL.DATA_KEY)
     migrateLegacyMeeks(d)
+    local schema = math.max(0, math.floor(tonumber(d.schemaVersion) or 0))
+    if schema < 1 then
+        d.quarantine = d.quarantine or {}
+        d.scoreSourceTotals = d.scoreSourceTotals or { server=0, clientFallback=0, adminCorrection=0 }
+        schema = 1
+    end
+    if schema < 2 then
+        for _, record in pairs(d.scores or {}) do
+            record.scoreSourceTotals = record.scoreSourceTotals or { server=0, clientFallback=0, adminCorrection=0 }
+            record.lastScoreSource = record.lastScoreSource or "legacy"
+        end
+        schema = 2
+    end
+    if tonumber(d.schemaVersion) ~= schema then
+        d.schemaVersion = schema
+        print("[SurvivorLeagueCommunityMigration] Data schema upgraded to " .. tostring(schema))
+    end
     d.version = SL.VERSION
     d.seasonId = d.seasonId or 1
     d.startedAt = d.startedAt or SL.now()
@@ -331,7 +350,38 @@ local function data()
     d.pending = d.pending or {}
     d.history = d.history or {}
     d.archive = d.archive or {}
+    d.quarantine = d.quarantine or {}
+    d.scoreSourceTotals = d.scoreSourceTotals or { server=0, clientFallback=0, adminCorrection=0 }
+    d.schemaVersion = schema
     return d
+end
+
+local function recordScoreSource(record, source, gained)
+    gained = math.max(0, math.floor(tonumber(gained) or 0))
+    source = tostring(source or "unknown")
+    record.scoreSourceTotals = record.scoreSourceTotals or { server=0, clientFallback=0, adminCorrection=0 }
+    record.scoreSourceTotals[source] = (tonumber(record.scoreSourceTotals[source]) or 0) + gained
+    record.lastScoreSource = source
+    record.lastScoreSourceAt = SL.now()
+    local totals = data().scoreSourceTotals
+    totals[source] = (tonumber(totals[source]) or 0) + gained
+end
+
+local function quarantineReport(key, record, reason, previous, current, serverCurrent, limit)
+    local d = data()
+    local entry = {
+        createdAt=SL.now(), username=key, reason=tostring(reason), previous=previous,
+        reported=current, serverCurrent=serverCurrent, limit=limit,
+    }
+    d.quarantine[#d.quarantine + 1] = entry
+    while #d.quarantine > 100 do table.remove(d.quarantine, 1) end
+    record.quarantinedReports = (tonumber(record.quarantinedReports) or 0) + 1
+    record.lastQuarantine = entry
+    print("[SurvivorLeagueCommunitySecurity] Quarantined client kill report | user="..tostring(key)
+        .." | reason="..tostring(reason).." | previous="..tostring(previous)
+        .." | reported="..tostring(current).." | server="..tostring(serverCurrent)
+        .." | limit="..tostring(limit))
+    ModData.transmit(SL.DATA_KEY)
 end
 
 local function safeKills(player)
@@ -708,6 +758,9 @@ local function observePlayer(player)
         return
     end
     if record.clientKillSync and SL.getOptions().allowClientKillReports then
+        local lastServer = tonumber(record.lastServerObservedKills)
+        if lastServer ~= nil and current > lastServer then record.serverCounterReliable = true end
+        record.lastServerObservedKills = current
         if not state then
             runtime[key] = { lastKills = tonumber(record.lastClientKills) or 0, lastHours = currentHours, lastCharacter = characterName(player) }
             return
@@ -747,7 +800,9 @@ local function observePlayer(player)
         record.totalKills = (record.totalKills or 0) + gained
         record.streakKills = (record.streakKills or 0) + gained
         record.bestStreak = math.max(tonumber(record.bestStreak) or 0, record.streakKills)
-        if announceKills then announceKills(key, record, player, gained) end
+        record.serverCounterReliable = true
+        recordScoreSource(record, "server", gained)
+        if announceKills then announceKills(key, record, player, gained, "server") end
         checkKillMilestones(player, record)
     end
     state.lastKills = current
@@ -792,32 +847,24 @@ local function observeReportedKills(player, reported, force)
     end
     local current = math.max(0, math.floor(numericReport))
     local previous = tonumber(record.lastClientKills)
-    local gained = 0
-
-    record.clientKillSync = true
-    if previous == nil then
-        -- The first accepted report establishes a baseline. Existing kills
-        -- must never be imported as new league or milestone progress.
-        gained = 0
-    elseif current < previous then
-        resetStreak(record)
-    else
-        gained = current - previous
-    end
-
     local elapsed = lastReport > 0 and math.max(1, now - lastReport) or opts.clientReportMinimumSeconds
-    local configuredLimit = math.max(1, math.ceil(opts.clientKillMaxPerMinute * elapsed / 60))
-    local allowedDelta = math.min(opts.maximumClientKillDelta, configuredLimit)
-    if gained > allowedDelta then
-        print("[SurvivorLeagueCommunityWarning] Rejected implausible kill delta for " .. tostring(key) .. ": " .. tostring(gained) .. " (limit " .. tostring(allowedDelta) .. ")")
-        -- Re-baseline without awarding the rejected increase so one suspicious
-        -- report cannot permanently prevent later legitimate synchronization.
-        record.lastClientKills = current
-        record.lastVanillaKills = current
+    local serverCurrent = safeKills(player)
+    local lastServer = tonumber(record.lastServerObservedKills)
+    if lastServer ~= nil and serverCurrent > lastServer then record.serverCounterReliable = true end
+    record.lastServerObservedKills = serverCurrent
+    local decision, gained, limit = SL.ScoringPolicy.evaluateClientReport(
+        previous, current, elapsed, opts.clientKillMaxPerMinute, opts.maximumClientKillDelta,
+        serverCurrent, record.serverCounterReliable == true, opts.clientServerTolerance
+    )
+    if decision == "quarantine-rate" or decision == "quarantine-server" then
+        quarantineReport(key, record, decision, previous, current, serverCurrent, limit)
         clientKillReportTimes[key] = now
-        killReportAck(player, current, false, "implausible-delta")
+        killReportAck(player, previous or 0, false, decision)
         return
     end
+
+    record.clientKillSync = true
+    if decision == "reset" then resetStreak(record) end
 
     clientKillReportTimes[key] = now
     record.lastClientKills = current
@@ -827,8 +874,14 @@ local function observeReportedKills(player, reported, force)
         record.totalKills = (record.totalKills or 0) + gained
         record.streakKills = (record.streakKills or 0) + gained
         record.bestStreak = math.max(tonumber(record.bestStreak) or 0, record.streakKills)
-        if announceKills then announceKills(key, record, player, gained) end
-        checkKillMilestones(player, record)
+        recordScoreSource(record, "clientFallback", gained)
+        if announceKills then announceKills(key, record, player, gained, "client-fallback") end
+        if opts.clientFallbackRewards or record.serverCounterReliable == true then
+            checkKillMilestones(player, record)
+        else
+            record.unverifiedMilestoneKills = record.streakKills
+            print("[SurvivorLeagueCommunitySecurity] Milestone rewards withheld for unverified client fallback | user="..tostring(key).." | streak="..tostring(record.streakKills))
+        end
     end
 
     local state = runtime[key] or {}
@@ -858,7 +911,7 @@ local function survivalText(hours)
     return tostring(minutesLeft) .. "m"
 end
 
-announceKills = function(key, record, player, gained)
+announceKills = function(key, record, player, gained, source)
     gained = math.max(0, tonumber(gained) or 0)
     if gained <= 0 then return end
     local parts = {
@@ -866,6 +919,7 @@ announceKills = function(key, record, player, gained)
         "Username: " .. tostring(key or record.username or "unknown"),
         "Character: " .. sanitizeName(characterName(player)),
         "Kills Gained: " .. tostring(gained),
+        "Source: " .. tostring(source or "server"),
         "Season Kills: " .. tostring(record.kills or 0),
         "Total Kills: " .. tostring(record.totalKills or 0),
     }
@@ -906,7 +960,9 @@ local function captureFinalAuthoritativeKills(player, key, record)
         record.totalKills = (record.totalKills or 0) + gained
         record.streakKills = (record.streakKills or 0) + gained
         record.bestStreak = math.max(tonumber(record.bestStreak) or 0, record.streakKills)
-        if announceKills then announceKills(key, record, player, gained) end
+        record.serverCounterReliable = true
+        recordScoreSource(record, "server", gained)
+        if announceKills then announceKills(key, record, player, gained, "server") end
         checkKillMilestones(player, record)
     end
     record.lastVanillaKills = current
@@ -1101,6 +1157,7 @@ local function correctScore(actor, targetUsername, seasonKills, totalKills, stre
     record.totalKills = correctedTotal
     record.streakKills = correctedStreak
     record.bestStreak = math.max(clampScore(record.bestStreak), correctedStreak)
+    recordScoreSource(record, "adminCorrection", math.max(0, correctedSeason - beforeSeason))
 
     -- Keep an online target's vanilla baseline aligned with the corrected
     -- score. Without this, a pending client report can immediately award an
@@ -1193,7 +1250,11 @@ local function pendingDiagnostics(d, username)
             if (tonumber(reward.nextRetryAt) or 0) > 0 then retrying = retrying + 1 end
         end
     end
-    return { total = total, mine = mine, retrying = retrying }
+    local quarantined, mineQuarantined = #(d.quarantine or {}), 0
+    for _, entry in ipairs(d.quarantine or {}) do
+        if tostring(entry.username) == tostring(username) then mineQuarantined = mineQuarantined + 1 end
+    end
+    return { total = total, mine = mine, retrying = retrying, quarantined=quarantined, mineQuarantined=mineQuarantined }
 end
 
 local function settlementPreview(rows, opts)
@@ -1293,6 +1354,8 @@ sendBoard = function(player, request)
             bestStreak = tonumber(myRecord and myRecord.bestStreak) or tonumber(myRecord and myRecord.streakKills) or 0,
             displayName = tostring(myRecord and myRecord.displayName or username or "Survivor"),
             nextMilestone = nextMilestoneFor(myRecord, opts),
+            lastScoreSource = tostring(myRecord and myRecord.lastScoreSource or "none"),
+            quarantinedReports = tonumber(myRecord and myRecord.quarantinedReports) or 0,
         },
         history = history,
         rewards = { rewardSummary(1, opts), rewardSummary(2, opts), rewardSummary(3, opts) },
@@ -1467,14 +1530,21 @@ local function cleanupPlayer(player)
 end
 
 local function validateConfiguration()
-    local opts, warnings = SL.getOptions(), 0
+    local opts, warnings, invalid = SL.getOptions(), 0, 0
     if opts.minimumKills < 0 or opts.seasonDays < 1 then
         warnings = warnings + 1
         print("[SurvivorLeagueCommunityConfig] Invalid season settings were clamped to safe values")
     end
     for place = 1, 3 do
-        parseItems(opts.items[place], opts.maximumRewardItemCount, "startup podium reward " .. tostring(place))
-        resolvePerk(opts.xpPerk, opts.xp[place], "startup podium reward " .. tostring(place))
+        local context = "startup podium reward " .. tostring(place)
+        local items = parseItems(opts.items[place], opts.maximumRewardItemCount, context)
+        if not validateItems(items, context) then invalid = invalid + 1 end
+        local perkValid = resolvePerk(opts.xpPerk, opts.xp[place], context)
+        if not perkValid then invalid = invalid + 1 end
+        local addValid = resolveTrait(opts.addTrait[place])
+        local removeValid = resolveTrait(opts.removeTrait[place])
+        if not addValid then invalid = invalid + 1 end
+        if not removeValid then invalid = invalid + 1 end
     end
     local previousThreshold = 0
     for _, reward in ipairs(opts.killStreakRewards or {}) do
@@ -1482,9 +1552,19 @@ local function validateConfiguration()
             warnings = warnings + 1
             print("[SurvivorLeagueCommunityConfig] Kill-streak thresholds should be strictly increasing; tier=" .. tostring(reward.id))
         end
-        if reward.enabled then previousThreshold = reward.kills end
+        if reward.enabled then
+            previousThreshold = reward.kills
+            local context = "startup kill-streak tier " .. tostring(reward.id)
+            if not validateItems(parseItems(reward.items, opts.maximumRewardItemCount, context), context) then invalid = invalid + 1 end
+            local perkValid = resolvePerk(reward.xpPerk, reward.xp, context)
+            if not perkValid then invalid = invalid + 1 end
+        end
     end
     print("[SurvivorLeagueCommunityConfig] Validation complete | warnings=" .. tostring(warnings)
+        .. " | invalidRewards=" .. tostring(invalid)
+        .. " | schema=" .. tostring(data().schemaVersion)
+        .. " | clientFallback=" .. tostring(opts.allowClientKillReports)
+        .. " | clientFallbackRewards=" .. tostring(opts.clientFallbackRewards)
         .. " | tiePolicy=" .. tostring(opts.seasonTiePolicy))
 end
 

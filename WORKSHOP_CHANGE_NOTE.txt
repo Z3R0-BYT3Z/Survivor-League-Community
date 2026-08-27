@@ -1,1 +1,1 @@
-v1.9.1 fixes Command Center row, pagination, stats, search, and footer overlap; adds responsive page sizing, stale-response protection, wrapped rewards, measured vertical alignment, and an accurate tracking-mode label.
+v1.10.0 hardens Build 42 client-fallback scoring with source attribution, server comparison, suspicious-report quarantine, reward trust controls, schema migration, startup reward validation, localization parity, and behavioral tests. Includes all v1.9.1 UI fixes.

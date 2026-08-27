@@ -24,6 +24,8 @@ jobs:
             echo "Checking $file"
             luac5.1 -p "$file"
           done < <(find 42/media/lua -type f -name '*.lua' -print0)
+      - name: Run scoring policy behavior tests
+        run: lua5.1 tests/test_scoring_policy.lua
       - name: Audit canonical source
         run: python3 tools/audit_release.py
       - name: Build clean Workshop package

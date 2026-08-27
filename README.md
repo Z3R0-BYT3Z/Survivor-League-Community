@@ -1,6 +1,6 @@
 # Survivor League
 
-Current version: **1.9.1**
+Current version: **1.10.0**
 
 Survivor League is the unified, open-source Project Zomboid Build 42 multiplayer competition mod. It combines the former Community and Meeks Protocol editions through selectable interface themes while retaining one authoritative scoring and persistence system.
 
@@ -14,7 +14,8 @@ Survivor League is the unified, open-source Project Zomboid Build 42 multiplayer
 - **Randomized join announcements:** Welcome connecting players with up to 20 admin-editable messages. `{name}` automatically inserts the player's name; prefix, cooldown, and enable/disable controls are available through Sandbox Options.
 - **Build 42 chat compatibility:** Join notices are inserted into chat without creating Build 42's red server alert; death and administrative notices retain their independently configured delivery behavior.
 - **System-delivered status notices:** Protocol, reward, correction, streak-reset, and settlement notices appear as server/system messages instead of making the player's character speak.
-- **Server-first synchronization:** Dedicated servers track kills from the server player object. An optional hosted/co-op client fallback is disabled by default and protected by configurable time-based rate limits.
+- **Hybrid synchronization:** Dedicated servers prefer the server player object. The Build 42 compatibility fallback records client-sourced increases separately, rate-limits them, compares them with reliable server counters, and quarantines suspicious reports.
+- **Reward trust controls:** Unverified client-fallback increases do not grant milestone rewards by default. Trusted communities may explicitly enable fallback milestone rewards in Sandbox Options.
 - **Verified death fallback:** Optional client death reports are accepted only when the server confirms that the player is dead.
 - **Master enable control:** Disabling the mod now stops tracking, commands, rewards, join notices, death notices, and leaderboard requests consistently.
 - **Protocol verification:** Clients must complete an exact protocol and release handshake before gameplay or administrative commands are accepted.
@@ -32,7 +33,7 @@ Kill-streak tiers with no configured items and zero XP are treated as disabled, 
 
 Blank join-message slots are ignored. Use `{name}` anywhere the connecting player's display name should appear.
 
-Dedicated servers should leave **Allow hosted/co-op client kill-report fallback** disabled. Enable it only when a hosted/co-op session does not expose updated zombie kills to the server player object. The fallback's report interval and maximum kills per minute can be adjusted in Sandbox Options.
+Build 42 dedicated servers that do not expose updated zombie kills to the server player object may leave **Allow hosted/co-op client kill-report fallback** enabled. This is a compatibility mode, not cryptographic proof of a kill. Reports are source-attributed, rate-limited, compared with a server counter once that counter proves reliable, and suspicious values are quarantined. Keep **Allow unverified client-fallback milestone rewards** disabled unless every connected client is trusted.
 
 Season expiry is checked when the server starts, once per minute, and during normal player polling. A settlement guard prevents overlapping timer or admin requests from issuing duplicate podium rewards.
 
@@ -46,13 +47,11 @@ See `ARCHITECTURE.md` and `MIGRATION.md` for the unified runtime and legacy Meek
 
 ## Administrative permissions
 
-Version 1.8.1 restricts the Admin tab and its score-correction, recovery-export, and forced-settlement commands to Project Zomboid's `Admin` access level. Moderator and Overseer accounts use the normal read-only player interface. Every protected command is authorized by the server; hiding the Admin tab is not the security boundary.
-
-Granular permissions and a separate read-only moderator status panel are planned for a later feature release.
+Administrators always receive all Survivor League management permissions. Moderator and Overseer accounts can receive four independent server-controlled permissions through Sandbox Options: operational status, score/archive management, reward retry, and season settlement. These permissions default to status-only. Every protected command is authorized again by the server; hiding a tab or button is not the security boundary.
 
 ## Updating from 1.8.0
 
-Replace both the client and server copies with the complete 1.9.1 package, then restart Project Zomboid and the server. Mixed installations are intentionally rejected by the version handshake. Existing standings, season history, and Sandbox settings remain compatible.
+Replace both the client and server copies with the complete 1.10.0 package, then restart Project Zomboid and the server. Mixed installations are intentionally rejected by the version handshake. Existing standings, season history, and Sandbox settings are upgraded in place to data schema 2.
 
 ## Installation
 
