@@ -1,0 +1,14 @@
+Survivor League Community v1.9.1
+
+- Fixed leaderboard rows drawing through pagination and personal statistics.
+- Page size now follows the available panel height and rendered font scale.
+- Client and server keep the requested page size and response ID synchronized.
+- Delayed responses can no longer replace a newer leaderboard page.
+- Removed duplicate branding behind the search controls.
+- Separated leaderboard, pagination, stats, refresh, and footer regions.
+- Vertically centered leaderboard values and wrapped long reward summaries.
+- Increased spacing between the leaderboard and rewards panels.
+- Tracking status now identifies server validation or client fallback accurately.
+
+Both clients and the server must install the complete v1.9.1 package. A server
+restart is required after updating.

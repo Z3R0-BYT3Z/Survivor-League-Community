@@ -2,6 +2,6 @@ version=1
 id=3784151798
 title=Survivor League
 description=A unified Build 42 multiplayer competition system with cumulative seasonal kills, lifetime statistics, per-life streak milestones, configurable rewards, announcements, administrative controls, and a tabbed F6 Command Center. Choose Project Zomboid, Meeks Protocol, or Military interface styling and optionally configure custom server branding. Includes guarded migration from the former Meeks Protocol edition.
-changenote=v1.9.0 refines Command Center spacing, prioritizes account usernames throughout the interface, sends separate account/display/character identity fields, and adds a reliable GUIDE URL fallback. Existing standings and relay logging remain compatible.
+changenote=v1.9.1 fixes Command Center row, pagination, stats, search, and footer overlap; adds responsive page sizing, stale-response protection, wrapped rewards, measured vertical alignment, and an accurate tracking-mode label.
 tags=Build 42;Balance;Framework;Interface;Misc;Multiplayer
 visibility=public

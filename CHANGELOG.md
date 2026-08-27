@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.9.1
+
+- Made leaderboard page size responsive to the panel height and active UI font scale.
+- Synchronized the calculated page size across client requests and server responses.
+- Prevented oversized or stale leaderboard responses from drawing over newer pages.
+- Reserved independent vertical regions for rows, pagination, personal statistics, controls, and the footer.
+- Removed the duplicate navigation-row branding that collided with the search field.
+- Vertically centered row content using measured font height and wrapped season reward summaries to two lines.
+- Increased the gap between leaderboard and reward panels and made the tracking label report the actual synchronization mode.
+- Bumped the internal handshake version to prevent mixed 1.9.0 and 1.9.1 installations.
+
 ## 1.9.0
 
 - Refined Command Center spacing and identity presentation.

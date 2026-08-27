@@ -22,6 +22,9 @@ local protocolCompatible = false
 local sessionToken = nil
 local reportSequence = 0
 local openAfterHandshake = false
+local boardRequestSequence = 0
+local latestAppliedBoardRequest = 0
+local rowsPerPageForHeight
 local Appearance = SL.getAppearance(nil)
 local C = Appearance.palette
 
@@ -81,7 +84,7 @@ function SL.requestScoreCorrection(username, seasonKills, totalKills, streakKill
     return true
 end
 
-local function refreshBoard(page, search)
+local function refreshBoard(page, search, pageSize)
     if not protocolCompatible then return end
     local now = SL.now()
     if lastBoardRequestAt > 0 and (now - lastBoardRequestAt) < 2 then return end
@@ -89,10 +92,15 @@ local function refreshBoard(page, search)
     reportLocalKills(true)
     currentBoardPage = math.max(1, math.floor(tonumber(page) or currentBoardPage or 1))
     if search ~= nil then currentBoardSearch = tostring(search or "") end
+    boardRequestSequence = boardRequestSequence + 1
+    pageSize = math.max(5, math.min(25, math.floor(tonumber(pageSize)
+        or (rowsPerPageForHeight and rowsPerPageForHeight(getCore():getScreenHeight()))
+        or 7)))
     sendClientCommand(SL.MODULE, "RequestLeaderboard", {
         page = currentBoardPage,
-        pageSize = 10,
+        pageSize = pageSize,
         search = currentBoardSearch,
+        requestId = boardRequestSequence,
     })
 end
 
@@ -158,6 +166,17 @@ local function fontHeight(font)
     local height = 18
     pcall(function() height = getTextManager():getFontHeight(font or UIFont.Small) end)
     return math.max(1, tonumber(height) or 18)
+end
+
+rowsPerPageForHeight = function(screenHeight)
+    local panelHeight = math.min(680, math.max(480, (tonumber(screenHeight) or 704) - 24))
+    local firstRowY = 194
+    local statsY = panelHeight - 112
+    local statsLabelY = statsY - 18
+    local paginationY = statsLabelY - 32
+    local leaderboardBottom = paginationY - 8
+    local rowH = math.max(31, fontHeight(UIFont.Medium) + 8)
+    return math.max(5, math.floor((leaderboardBottom - firstRowY) / rowH))
 end
 
 local function drawTextCenteredInBox(self, value, x, y, width, height, color, font)
@@ -227,11 +246,7 @@ function LeaderboardPanel:getRowsPerPage()
     -- fixed ten-row page therefore overlaps pagination and the stats strip at
     -- larger UI/font scales. Derive the page size from the actual rendered
     -- row height and the space reserved for the leaderboard.
-    local top = 148
-    local bottom = self.height - 168
-    local firstRowY = top + 46
-    local rowH = math.max(31, fontHeight(UIFont.Medium) + 8)
-    return math.max(3, math.floor((bottom - firstRowY) / rowH))
+    return rowsPerPageForHeight(self.height + 24)
 end
 
 function LeaderboardPanel:getPageCount()
@@ -268,17 +283,17 @@ function LeaderboardPanel:setPage(page)
     self.currentPage = math.max(1, math.min(tonumber(page) or 1, self:getPageCount()))
     currentBoardPage = self.currentPage
     self:updateControls()
-    refreshBoard(self.currentPage, currentBoardSearch)
+    refreshBoard(self.currentPage, currentBoardSearch, self:getRowsPerPage())
 end
 
 function LeaderboardPanel:onPreviousPage() self:setPage(self.currentPage - 1) end
 function LeaderboardPanel:onNextPage() self:setPage(self.currentPage + 1) end
 function LeaderboardPanel:onClose() closeBoard(self) end
-function LeaderboardPanel:onRefresh() refreshBoard() end
+function LeaderboardPanel:onRefresh() refreshBoard(self.currentPage, currentBoardSearch, self:getRowsPerPage()) end
 function LeaderboardPanel:onSearch()
     currentBoardSearch = self.searchEntry and self.searchEntry:getText() or ""
     currentBoardPage = 1
-    refreshBoard(1, currentBoardSearch)
+    refreshBoard(1, currentBoardSearch, self:getRowsPerPage())
 end
 function LeaderboardPanel:onSettleSeason()
     local now = SL.now()
@@ -430,8 +445,11 @@ function LeaderboardPanel:createChildren()
     self.searchEntry:initialise(); self:addChild(self.searchEntry)
     self.searchButton = self:addCommandButton(258, 98, 52, 28, L("Search", "GO"), LeaderboardPanel.onSearch)
     local leaderboardCenter = 20 + math.floor((self.width * 0.64) / 2)
-    self.previousPage = self:addCommandButton(leaderboardCenter-72, self.height-150, 46, 28, "<", LeaderboardPanel.onPreviousPage)
-    self.nextPage = self:addCommandButton(leaderboardCenter+26, self.height-150, 46, 28, ">", LeaderboardPanel.onNextPage)
+    local statsY = self.height - 112
+    local statsLabelY = statsY - 18
+    local paginationY = statsLabelY - 32
+    self.previousPage = self:addCommandButton(leaderboardCenter-72, paginationY, 46, 28, "<", LeaderboardPanel.onPreviousPage)
+    self.nextPage = self:addCommandButton(leaderboardCenter+26, paginationY, 46, 28, ">", LeaderboardPanel.onNextPage)
     local panelX, panelW = 220, self.width-440
     local formX, formW, fieldGap = panelX+42, panelW-84, 10
     local numericW = math.max(72, math.floor(formW*0.13))
@@ -469,18 +487,22 @@ function LeaderboardPanel:drawHeader()
     local statusText = "STATUS: ONLINE"
     self:drawText(statusText, 20, 40, C.live[1],C.live[2],C.live[3],1,UIFont.Small)
     local trackingX = 20 + textWidth(statusText, UIFont.Small) + 24
-    self:drawText(fitText("HOST-VALIDATED TRACKING | "..tostring(self.payload.playerCount or 0).." REGISTERED SURVIVORS", self.width-trackingX-210, UIFont.Small), trackingX, 40, C.muted[1],C.muted[2],C.muted[3],1,UIFont.Small)
+    local trackingLabel = self.payload.trackingMode == "client-fallback"
+        and "CLIENT-FALLBACK TRACKING"
+        or "SERVER-VALIDATED TRACKING"
+    self:drawText(fitText(trackingLabel.." | "..tostring(self.payload.playerCount or 0).." REGISTERED SURVIVORS", self.width-trackingX-210, UIFont.Small), trackingX, 40, C.muted[1],C.muted[2],C.muted[3],1,UIFont.Small)
     self:drawTextRight("BUILD 42", self.width-68, 14, C.muted[1],C.muted[2],C.muted[3],1,UIFont.Small)
-    self:drawText(fitText(string.upper(Appearance.title), 300, UIFont.Large), 20, 78, C.text[1],C.text[2],C.text[3],1,UIFont.Large)
-    self:drawText(fitText(string.upper(Appearance.subtitle), 300, UIFont.Small), 22, 108, C.muted[1],C.muted[2],C.muted[3],1,UIFont.Small)
     self:drawTextRight("Season #"..tostring(self.payload.seasonId or "?"), self.width-24, 76, C.text[1],C.text[2],C.text[3],1,UIFont.Medium)
     self:drawTextRight(fitText(countdown(self.payload), 190, UIFont.Small), self.width-24, 104, C.accent[1],C.accent[2],C.accent[3],1,UIFont.Small)
 end
 
 function LeaderboardPanel:drawLeaderboard()
     local leftX, top, leftW = 20, 148, math.floor(self.width * 0.64)
-    local rightX, rightW = leftX + leftW + 16, self.width - (leftX + leftW + 36)
-    local bottom = self.height - 168
+    local rightX, rightW = leftX + leftW + 20, self.width - (leftX + leftW + 40)
+    local statsY = self.height - 112
+    local statsLabelY = statsY - 18
+    local paginationY = statsLabelY - 32
+    local bottom = paginationY - 8
     self:drawRect(leftX, top, leftW, bottom-top, 0.72, C.panel[1],C.panel[2],C.panel[3])
     self:drawRectBorder(leftX, top, leftW, bottom-top, 0.8, C.line[1],C.line[2],C.line[3])
     drawCorners(self,leftX,top,leftW,bottom-top,C.accent)
@@ -503,6 +525,7 @@ function LeaderboardPanel:drawLeaderboard()
     local lastRank = firstRank + #rows - 1
     local rowH = math.max(31, fontHeight(UIFont.Medium)+8)
     for index,row in ipairs(rows) do
+        if index > rowsPerPage then break end
         local rank = tonumber(row.rank) or (firstRank + index - 1)
         local visible = index-1
         local y = top+46+(visible*rowH)
@@ -515,13 +538,14 @@ function LeaderboardPanel:drawLeaderboard()
         local rankBoxW = math.max(42, rankW-10)
         self:drawRectBorder(rankX+5,y+3,rankBoxW,rowH-8,0.85,accent[1],accent[2],accent[3])
         drawTextCenteredInBox(self,tostring(rank),rankX+5,y+3,rankBoxW,rowH-8,accent,UIFont.Medium)
-        self:drawText(fitText(row.username or row.displayName or row.characterName,survivorW-12,UIFont.Medium),survivorX+6,y+6,C.text[1],C.text[2],C.text[3],1,UIFont.Medium)
-        self:drawTextCentre(tostring(row.kills or 0),seasonX+(seasonW/2),y+6,C.text[1],C.text[2],C.text[3],1,UIFont.Medium)
-        self:drawTextCentre(tostring(row.totalKills or 0),totalX+(totalW/2),y+6,C.text[1],C.text[2],C.text[3],1,UIFont.Medium)
-        self:drawTextCentre(tostring(row.streakKills or 0),streakX+(streakW/2),y+6,C.text[1],C.text[2],C.text[3],1,UIFont.Medium)
+        local valueY = y + math.floor((rowH - fontHeight(UIFont.Medium)) / 2) - 1
+        self:drawText(fitText(row.username or row.displayName or row.characterName,survivorW-12,UIFont.Medium),survivorX+6,valueY,C.text[1],C.text[2],C.text[3],1,UIFont.Medium)
+        self:drawTextCentre(tostring(row.kills or 0),seasonX+(seasonW/2),valueY,C.text[1],C.text[2],C.text[3],1,UIFont.Medium)
+        self:drawTextCentre(tostring(row.totalKills or 0),totalX+(totalW/2),valueY,C.text[1],C.text[2],C.text[3],1,UIFont.Medium)
+        self:drawTextCentre(tostring(row.streakKills or 0),streakX+(streakW/2),valueY,C.text[1],C.text[2],C.text[3],1,UIFont.Medium)
     end
     local filterText = tostring(self.payload.search or "") ~= "" and (" | FILTER: "..tostring(self.payload.search)) or ""
-    self:drawTextCentre(tostring(self.currentPage).." / "..tostring(self:getPageCount())..filterText,leftX+(leftW/2),self.height-143,C.text[1],C.text[2],C.text[3],1,UIFont.Small)
+    drawTextCenteredInBox(self,tostring(self.currentPage).." / "..tostring(self:getPageCount())..filterText,leftX+(leftW/2)-80,paginationY,160,28,C.text,UIFont.Small)
     self:drawRect(rightX,top,rightW,bottom-top,0.72,C.panel[1],C.panel[2],C.panel[3])
     self:drawRectBorder(rightX,top,rightW,bottom-top,0.8,C.line[1],C.line[2],C.line[3])
     drawCorners(self,rightX,top,rightW,bottom-top,C.accent)
@@ -538,7 +562,10 @@ function LeaderboardPanel:drawLeaderboard()
         self:drawRectBorder(rightX+16,y,rightW-32,76,0.85,accent[1],accent[2],accent[3])
         self:drawRectBorder(rightX+30,y+16,62,42,0.95,accent[1],accent[2],accent[3])
         drawTextCenteredInBox(self,labels[place],rightX+30,y+16,62,42,accent,UIFont.Medium)
-        self:drawText(fitText((self.payload.rewards or {})[place] or L("NoReward", "No reward configured"),rightW-132,UIFont.Small),rightX+106,y+27,C.text[1],C.text[2],C.text[3],1,UIFont.Small)
+        local line1, line2 = wrapTwoLines((self.payload.rewards or {})[place] or L("NoReward", "No reward configured"),rightW-132,UIFont.Small)
+        local textY = line2 and (y+19) or (y+math.floor((76-fontHeight(UIFont.Small))/2))
+        self:drawText(line1,rightX+106,textY,C.text[1],C.text[2],C.text[3],1,UIFont.Small)
+        if line2 then self:drawText(line2,rightX+106,textY+fontHeight(UIFont.Small)+3,C.text[1],C.text[2],C.text[3],1,UIFont.Small) end
     end
 end
 
@@ -624,8 +651,8 @@ end
 
 function LeaderboardPanel:drawYourStatsStrip()
     local stats=self.payload.myStats or {}; local y=self.height-112; local w=math.floor((self.width-64)/5); local cards={{"YOUR RANK",stats.rank or 0},{"SEASON KILLS",stats.kills or 0},{"TOTAL KILLS",stats.totalKills or 0},{"CURRENT STREAK",stats.streakKills or 0},{"BEST STREAK",stats.bestStreak or 0}}
-    self:drawText("YOUR STATS",20,y-24,C.text[1],C.text[2],C.text[3],1,UIFont.Small)
-    for i,card in ipairs(cards) do local x=20+((i-1)*(w+6)); self:drawRect(x,y,w,58,0.78,C.panel[1],C.panel[2],C.panel[3]); self:drawRectBorder(x,y,w,58,0.65,C.line[1],C.line[2],C.line[3]); self:drawTextCentre(card[1],x+(w/2),y+8,C.muted[1],C.muted[2],C.muted[3],1,UIFont.Small); self:drawTextCentre(tostring(card[2]),x+(w/2),y+29,C.text[1],C.text[2],C.text[3],1,UIFont.Medium) end
+    self:drawText("YOUR STATS",20,y-18,C.text[1],C.text[2],C.text[3],1,UIFont.Small)
+    for i,card in ipairs(cards) do local x=20+((i-1)*(w+6)); self:drawRect(x,y,w,52,0.78,C.panel[1],C.panel[2],C.panel[3]); self:drawRectBorder(x,y,w,52,0.65,C.line[1],C.line[2],C.line[3]); self:drawTextCentre(card[1],x+(w/2),y+6,C.muted[1],C.muted[2],C.muted[3],1,UIFont.Small); self:drawTextCentre(tostring(card[2]),x+(w/2),y+25,C.text[1],C.text[2],C.text[3],1,UIFont.Medium) end
 end
 
 function LeaderboardPanel:prerender()
@@ -640,6 +667,10 @@ function LeaderboardPanel:prerender()
 end
 
 local function showBoard(payload)
+    local responseId = math.max(0, math.floor(tonumber(payload and payload.requestId) or 0))
+    if responseId > 0 and responseId < boardRequestSequence then return end
+    if responseId > 0 and responseId < latestAppliedBoardRequest then return end
+    if responseId > 0 then latestAppliedBoardRequest = responseId end
     if panel then panel:removeFromUIManager() end
     payload = payload or {}; payload.clientReceivedAt = SL.now()
     panel = LeaderboardPanel:new(payload); panel:initialise(); panel:addToUIManager()
