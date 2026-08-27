@@ -54,6 +54,8 @@
   "Sandbox_SurvivorLeagueCommunity_AllowClientKillReports": "Enable validated client kill reporting",
   "Sandbox_SurvivorLeagueCommunity_ClientKillReportIntervalSeconds": "Client kill-report minimum interval in seconds",
   "Sandbox_SurvivorLeagueCommunity_ClientKillMaxPerMinute": "Maximum client-reported kills per minute",
+  "Sandbox_SurvivorLeagueCommunity_ClientServerTolerance": "Allowed difference between reliable server and client kill counters",
+  "Sandbox_SurvivorLeagueCommunity_ClientFallbackRewards": "Allow unverified client-fallback kills to grant milestone rewards",
   "Sandbox_SurvivorLeagueCommunity_AllowClientDeathReports": "Allow verified client death-report fallback",
   "Sandbox_SurvivorLeagueCommunity_DeathReportMinimumSeconds": "Minimum seconds between client death reports",
   "Sandbox_SurvivorLeagueCommunity_DeathAnnouncements": "Announce player deaths to the server",

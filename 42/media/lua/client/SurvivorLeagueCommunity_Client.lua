@@ -643,9 +643,10 @@ function LeaderboardPanel:drawDiagnostics()
     self:drawText("PENDING REWARDS",x+42,y+78,C.muted[1],C.muted[2],C.muted[3],1,UIFont.Small); self:drawTextRight(tostring(diagnostics.total or 0),x+w-42,y+78,C.text[1],C.text[2],C.text[3],1,UIFont.Medium)
     self:drawText("REWARDS WAITING TO RETRY",x+42,y+112,C.muted[1],C.muted[2],C.muted[3],1,UIFont.Small); self:drawTextRight(tostring(diagnostics.retrying or 0),x+w-42,y+112,C.text[1],C.text[2],C.text[3],1,UIFont.Medium)
     self:drawText("RANKING TIE POLICY",x+42,y+146,C.muted[1],C.muted[2],C.muted[3],1,UIFont.Small); self:drawTextRight(tostring(self.payload.tiePolicy or 1),x+w-42,y+146,C.text[1],C.text[2],C.text[3],1,UIFont.Medium)
-    self:drawText("SETTLEMENT PREVIEW",x+42,y+200,C.accent[1],C.accent[2],C.accent[3],1,UIFont.Small)
+    self:drawText("QUARANTINED CLIENT REPORTS",x+42,y+180,C.muted[1],C.muted[2],C.muted[3],1,UIFont.Small); self:drawTextRight(tostring(diagnostics.quarantined or 0),x+w-42,y+180,C.text[1],C.text[2],C.text[3],1,UIFont.Medium)
+    self:drawText("SETTLEMENT PREVIEW",x+42,y+220,C.accent[1],C.accent[2],C.accent[3],1,UIFont.Small)
     for index,row in ipairs(self.payload.settlementPreview or {}) do
-        self:drawText("#"..tostring(row.place).."  "..tostring(row.displayName or row.username).."  //  "..tostring(row.kills).." kills",x+62,y+218+(index*34),C.text[1],C.text[2],C.text[3],1,UIFont.Medium)
+        self:drawText("#"..tostring(row.place).."  "..tostring(row.displayName or row.username).."  //  "..tostring(row.kills).." kills",x+62,y+238+(index*34),C.text[1],C.text[2],C.text[3],1,UIFont.Medium)
     end
 end
 
@@ -754,9 +755,9 @@ local function onServerCommand(module, command, args)
     elseif command == "RecoveryPreviewResult" then
         local message
         if args and args.ok == true then
-            message = "Recovery export completed: "..tostring(args.canonical or 0).." current and "..tostring(args.legacy or 0).." legacy records. Check the server log."
+            message = L("RecoveryComplete", "Recovery export completed: %1 current and %2 legacy records. Check the server log.", tostring(args.canonical or 0), tostring(args.legacy or 0))
         else
-            message = "Recovery export failed: "..tostring(args and args.reason or "unknown error")
+            message = L("RecoveryFailed", "Recovery export failed: %1", tostring(args and args.reason or "unknown error"))
         end
         print("[SurvivorLeagueCommunityRecovery] "..message)
         showServerChatMessage(message)
@@ -785,29 +786,24 @@ local function onServerCommand(module, command, args)
         showServerChatMessage(L("ProtocolMismatch", "Survivor League client/server versions do not match. Update the mod before using the Command Center."))
     elseif command == "MilestoneReward" then
         showServerChatMessage(
-            "Kill-streak reward received: tier #"
-                .. tostring(args.tier)
-                .. " at "
-                .. tostring(args.threshold)
-                .. " kills"
+            L("MilestoneReceived", "Kill-streak reward received: tier #%1 at %2 kills", tostring(args.tier), tostring(args.threshold))
         )
     elseif command == "RewardGranted" then
         showServerChatMessage(
-            "Survivor League reward received: place #"
-                .. tostring(args.place)
+            L("PodiumReceived", "Survivor League reward received: place #%1", tostring(args.place))
         )
     elseif command == "ScoreCorrectionResult" then
-        showServerChatMessage(args and args.ok and ("Survivor League score corrected for "..tostring(args.username)) or ("Score correction failed: "..tostring(args and args.reason or "unknown")))
+        showServerChatMessage(args and args.ok and L("ScoreCorrected", "Survivor League score corrected for %1", tostring(args.username)) or L("ScoreCorrectionFailed", "Score correction failed: %1", tostring(args and args.reason or "unknown")))
     elseif command == "AdminActionResult" then
         local label = tostring(args and args.action or "Admin action")
-        showServerChatMessage(args and args.ok and (label.." completed for "..tostring(args.username or "player")) or (label.." failed: "..tostring(args and args.reason or "unknown")))
+        showServerChatMessage(args and args.ok and L("AdminActionComplete", "%1 completed for %2", label, tostring(args.username or "player")) or L("AdminActionFailed", "%1 failed: %2", label, tostring(args and args.reason or "unknown")))
     elseif command == "ScoreReset"
         and getPlayer()
         and args.username == SL.playerKey(getPlayer())
     then
-        showServerChatMessage("Kill streak reset on death. Season and total kills preserved.")
+        showServerChatMessage(L("StreakReset", "Kill streak reset on death. Season and total kills preserved."))
     elseif command == "SeasonSettled" then
-        showServerChatMessage("Survivor League season settled. A new season has begun.")
+        showServerChatMessage(L("SeasonSettled", "Survivor League season settled. A new season has begun."))
     end
 end
 

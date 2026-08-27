@@ -28,6 +28,8 @@ def main() -> None:
     parser.add_argument("--package")
     args = parser.parse_args()
     version = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
+    release = json.loads((ROOT / "release.json").read_text(encoding="utf-8"))
+    if release.get("public_version") != version: fail("release.json public_version does not match VERSION")
     for info in (ROOT / "mod.info", ROOT / "42/mod.info"):
         text = info.read_text(encoding="utf-8-sig")
         if f"version={version}" not in text: fail(f"{info.relative_to(ROOT)} version does not match VERSION={version}")
@@ -56,6 +58,21 @@ def main() -> None:
         if key not in data: fail(f"Missing JSON translation: {key}")
     client = (ROOT / "42/media/lua/client/SurvivorLeagueCommunity_Client.lua").read_text(encoding="utf-8-sig")
     server = (ROOT / "42/media/lua/server/SurvivorLeagueCommunity_Server.lua").read_text(encoding="utf-8-sig")
+    runtime_match = re.search(r"SurvivorLeagueCommunity\.VERSION\s*=\s*(\d+)", config)
+    protocol_match = re.search(r"SurvivorLeagueCommunity\.PROTOCOL_VERSION\s*=\s*(\d+)", config)
+    schema_match = re.search(r"CURRENT_SCHEMA_VERSION\s*=\s*(\d+)", server)
+    if not runtime_match or int(runtime_match.group(1)) != int(release.get("runtime_version", -1)):
+        fail("Runtime handshake version does not match release.json")
+    if not protocol_match or int(protocol_match.group(1)) != int(release.get("protocol_version", -1)):
+        fail("Protocol version does not match release.json")
+    if not schema_match or int(schema_match.group(1)) != int(release.get("data_schema_version", -1)):
+        fail("Data schema version does not match release.json")
+    english_ui = set(re.findall(r"\bUI_SurvivorLeagueCommunity_([A-Za-z0-9_]+)\s*=", (ROOT / "42/media/lua/shared/Translate/EN/UI_EN.txt").read_text(encoding="utf-8-sig")))
+    for locale in ("DE", "IT", "PTBR"):
+        locale_path = ROOT / f"42/media/lua/shared/Translate/{locale}/UI_{locale}.txt"
+        locale_keys = set(re.findall(r"\bUI_SurvivorLeagueCommunity_([A-Za-z0-9_]+)\s*=", locale_path.read_text(encoding="utf-8-sig")))
+        if locale_keys != english_ui:
+            fail(f"{locale} UI translation key mismatch: missing={sorted(english_ui-locale_keys)}, extra={sorted(locale_keys-english_ui)}")
     sent = set(re.findall(r'sendClientCommand\([^\n]*?"([A-Za-z0-9_]+)"', client))
     handled = set(re.findall(r'command\s*[~=]=\s*"([A-Za-z0-9_]+)"', server))
     if sent - handled: fail("Client commands without server handlers: " + ", ".join(sorted(sent-handled)))
@@ -87,6 +104,12 @@ def main() -> None:
         fail("Configured hosted kill-rate enforcement or report acknowledgements are missing")
     if "captureFinalAuthoritativeKills" not in server:
         fail("Final authoritative death synchronization is missing")
+    if "ScoringPolicy.evaluateClientReport" not in server or "quarantineReport" not in server:
+        fail("Hybrid client-report quarantine policy is missing")
+    if 'recordScoreSource(record, "clientFallback"' not in server or 'recordScoreSource(record, "server"' not in server:
+        fail("Score-source attribution is missing")
+    if "clientFallbackRewards" not in server or "Milestone rewards withheld" not in server:
+        fail("Unverified fallback reward protection is missing")
     if "rewardId = \"season:\"" not in server or "settlementInProgress" not in server:
         fail("Idempotent settlement safeguards are missing")
     if not re.search(r"InterfaceTheme\s*\{[^\n]*default\s*=\s*2", sandbox):

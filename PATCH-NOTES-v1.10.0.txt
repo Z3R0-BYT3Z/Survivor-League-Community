@@ -1,0 +1,16 @@
+Survivor League Community v1.10.0
+
+- Client-fallback score increases now record their source separately from server
+  observations and administrator corrections.
+- Rate violations and mismatches against a proven-reliable server counter are
+  quarantined instead of being awarded or silently accepted as a new baseline.
+- Unverified fallback kills do not grant milestone rewards by default.
+- Added configurable server-counter tolerance and trusted fallback rewards.
+- Added persistent data schema 2 and consolidated startup reward validation.
+- Added quarantine totals to the operational status panel.
+- Corrected permission and synchronization documentation.
+- Completed UI localization key parity and expanded automated release tests.
+- Includes the complete responsive Command Center correction from v1.9.1.
+
+Both clients and the server must install the complete v1.10.0 package. Existing
+standings are upgraded in place. Restart the server after updating.

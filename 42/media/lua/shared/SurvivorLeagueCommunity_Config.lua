@@ -1,7 +1,7 @@
 SurvivorLeagueCommunity = SurvivorLeagueCommunity or {}
 SurvivorLeagueCommunity.MODULE = "SurvivorLeagueCommunity"
 SurvivorLeagueCommunity.DATA_KEY = "SurvivorLeagueCommunityData"
-SurvivorLeagueCommunity.VERSION = 19
+SurvivorLeagueCommunity.VERSION = 20
 SurvivorLeagueCommunity.PROTOCOL_VERSION = 5
 
 SurvivorLeagueCommunity.THEMES = {
@@ -113,6 +113,8 @@ function SurvivorLeagueCommunity.getOptions()
         allowClientKillReports = root.AllowClientKillReports ~= false,
         clientKillReportIntervalSeconds = math.max(1, tonumber(root.ClientKillReportIntervalSeconds) or 15),
         clientKillMaxPerMinute = math.max(1, tonumber(root.ClientKillMaxPerMinute) or 120),
+        clientServerTolerance = math.max(0, math.min(50, tonumber(root.ClientServerTolerance) or 3)),
+        clientFallbackRewards = root.ClientFallbackRewards == true,
         clientReportMinimumSeconds = math.max(1, tonumber(root.ClientKillReportIntervalSeconds) or 15),
         maximumClientKillDelta = 500,
         maximumRewardItemCount = 100,
