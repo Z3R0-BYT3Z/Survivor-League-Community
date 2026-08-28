@@ -157,6 +157,57 @@ local function resetStreak(record)
     record.streakMilestoneDelivery = {}
 end
 
+-- Reconcile counters that existed before Survivor League began observing the
+-- current character. totalKills - streakKills is the preserved total from
+-- earlier lives; the live vanilla counter is authoritative for this life.
+-- Taking the maximum prevents a delayed/stale counter from reducing lifetime
+-- totals while still repairing previously missed baseline kills.
+local function reconcileCurrentLife(record, current, key, source)
+    current = math.max(0, math.floor(tonumber(current) or 0))
+    local previousStreak = math.max(0, math.floor(tonumber(record.streakKills) or 0))
+    local previousTotal = math.max(0, math.floor(tonumber(record.totalKills) or 0))
+    local previousLives = math.max(0, previousTotal - previousStreak)
+    local correctedTotal = math.max(previousTotal, previousLives + current, tonumber(record.kills) or 0)
+
+    record.streakKills = current
+    record.totalKills = correctedTotal
+    record.bestStreak = math.max(tonumber(record.bestStreak) or 0, current)
+
+    if previousStreak ~= current or previousTotal ~= correctedTotal then
+        record.currentLifeReconciledAt = SL.now()
+        record.currentLifeReconciliationSource = tostring(source or "unknown")
+        print("[SurvivorLeagueCommunityReconciliation] user=" .. tostring(key)
+            .. " | source=" .. tostring(source or "unknown")
+            .. " | total=" .. tostring(previousTotal) .. "->" .. tostring(correctedTotal)
+            .. " | streak=" .. tostring(previousStreak) .. "->" .. tostring(current))
+    end
+end
+
+local function reconcileStoredCurrentLives()
+    local d = data()
+    if tonumber(d.currentLifeReconciliationVersion) == 1 then return end
+
+    local changed, count = 0, 0
+    for key, record in pairs(d.scores or {}) do
+        if type(record) == "table" then
+            count = count + 1
+            local beforeTotal = math.max(0, math.floor(tonumber(record.totalKills) or 0))
+            local beforeStreak = math.max(0, math.floor(tonumber(record.streakKills) or 0))
+            local baseline = math.max(0, math.floor(tonumber(record.lastVanillaKills) or 0))
+            reconcileCurrentLife(record, baseline, key, "v1.10.2-startup")
+            if beforeTotal ~= record.totalKills or beforeStreak ~= record.streakKills then
+                changed = changed + 1
+            end
+        end
+    end
+
+    d.currentLifeReconciliationVersion = 1
+    d.currentLifeReconciledAt = SL.now()
+    ModData.transmit(SL.DATA_KEY)
+    print("[SurvivorLeagueCommunityReconciliation] startup complete | changed=" .. tostring(changed)
+        .. " | records=" .. tostring(count))
+end
+
 local function copyValue(value, seen)
     if type(value) ~= "table" then return value end
     seen = seen or {}
@@ -755,6 +806,7 @@ local function observePlayer(player)
             lastHours = currentHours,
             lastCharacter = characterName(player),
         }
+        reconcileCurrentLife(record, current, key, "server-baseline")
         return
     end
     if record.clientKillSync and SL.getOptions().allowClientKillReports then
@@ -784,6 +836,7 @@ local function observePlayer(player)
         end
         record.lastVanillaKills = current
         runtime[key] = { lastKills = current, lastHours = currentHours, lastCharacter = characterName(player) }
+        reconcileCurrentLife(record, current, key, "server-baseline")
         return
     end
     if current < state.lastKills or currentHours < (state.lastHours or 0) then
@@ -809,6 +862,7 @@ local function observePlayer(player)
     state.lastHours = currentHours
     state.lastCharacter = characterName(player)
     record.lastVanillaKills = current
+    reconcileCurrentLife(record, current, key, "server")
 end
 
 local function killReportAck(player, current, accepted, reason)
@@ -883,6 +937,8 @@ local function observeReportedKills(player, reported, force)
             print("[SurvivorLeagueCommunitySecurity] Milestone rewards withheld for unverified client fallback | user="..tostring(key).." | streak="..tostring(record.streakKills))
         end
     end
+
+    reconcileCurrentLife(record, current, key, "client-fallback")
 
     local state = runtime[key] or {}
     state.lastKills = current
@@ -1152,7 +1208,7 @@ local function correctScore(actor, targetUsername, seasonKills, totalKills, stre
     local beforeStreak = clampScore(record.streakKills)
     local correctedSeason = clampScore(seasonKills)
     local correctedTotal = math.max(correctedSeason, clampScore(totalKills))
-    local correctedStreak = math.min(correctedSeason, clampScore(streakKills))
+    local correctedStreak = math.min(correctedTotal, clampScore(streakKills))
     record.kills = correctedSeason
     record.totalKills = correctedTotal
     record.streakKills = correctedStreak
@@ -1576,6 +1632,7 @@ if Events.OnPlayerDisconnect then Events.OnPlayerDisconnect.Add(cleanupPlayer) e
 Events.OnInitGlobalModData.Add(function() data() end)
 if Events.OnServerStarted then Events.OnServerStarted.Add(function()
     validateConfiguration()
+    reconcileStoredCurrentLives()
     checkSeasonSettlement("server-start")
 end) end
 if Events.EveryOneMinute then Events.EveryOneMinute.Add(function() checkSeasonSettlement("one-minute") end) end

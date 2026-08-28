@@ -1,6 +1,6 @@
 # Survivor League
 
-Current version: **1.10.0**
+Current version: **1.10.2**
 
 Survivor League is the unified, open-source Project Zomboid Build 42 multiplayer competition mod. It combines the former Community and Meeks Protocol editions through selectable interface themes while retaining one authoritative scoring and persistence system.
 

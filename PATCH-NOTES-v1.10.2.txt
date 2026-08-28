@@ -1,0 +1,17 @@
+Survivor League v1.10.2
+
+Scoring corrections
+- Reconciles a live character's vanilla kill counter with Survivor League's current streak.
+- Preserves kills from previous lives and adds previously missed current-life baseline kills to lifetime totals.
+- Does not add baseline corrections to the active season score.
+- Stabilizes after reconciliation so later client reports and restarts do not double-count kills.
+- Best streak retains the highest verified current-life counter.
+- Admin score correction now permits a current streak greater than the current season score when the streak spans a season boundary.
+
+Examples from the read-only recovery export
+- Karma: lifetime/streak 1/1 with live baseline 2 becomes 2/2.
+- GhostMachine: lifetime/streak 305/231 with live baseline 475 becomes 549/475.
+- Bisk: lifetime/streak 1199/1199 with live baseline 2484 becomes 2484/2484.
+
+Workshop ID: 3784151798
+Mod ID: SurvivorLeagueCommunity

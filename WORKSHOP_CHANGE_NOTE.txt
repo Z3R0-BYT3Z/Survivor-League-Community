@@ -1,1 +1,1 @@
-v1.10.0 hardens Build 42 client-fallback scoring with source attribution, server comparison, suspicious-report quarantine, reward trust controls, schema migration, startup reward validation, localization parity, and behavioral tests. Includes all v1.9.1 UI fixes.
+v1.10.2 fixes lifetime totals and current-life kill streaks by reconciling stored Build 42 counters without changing season standings; also retains the corrected Workshop package layout and F6 handshake from v1.10.1.
