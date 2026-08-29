@@ -811,9 +811,49 @@ local function observePlayer(player)
     end
     if record.clientKillSync and SL.getOptions().allowClientKillReports then
         local lastServer = tonumber(record.lastServerObservedKills)
+        local clientBaseline = tonumber(record.lastClientKills)
         if lastServer ~= nil and current > lastServer then record.serverCounterReliable = true end
         record.lastServerObservedKills = current
+
+        -- F6 refreshes can arrive before the next client fallback report. When
+        -- the server counter has advanced, import that verified delta now and
+        -- advance the client baseline with it. A later report of the same
+        -- counter then evaluates to a zero delta instead of double-counting.
+        if clientBaseline ~= nil and current > clientBaseline then
+            local gained = current - clientBaseline
+            record.kills = (record.kills or 0) + gained
+            record.totalKills = (record.totalKills or 0) + gained
+            record.streakKills = (record.streakKills or 0) + gained
+            record.bestStreak = math.max(tonumber(record.bestStreak) or 0, record.streakKills)
+            record.lastClientKills = current
+            record.lastVanillaKills = current
+            record.serverCounterReliable = true
+            recordScoreSource(record, "server", gained)
+            if announceKills then announceKills(key, record, player, gained, "server-f6-catchup") end
+            checkKillMilestones(player, record)
+            ModData.transmit(SL.DATA_KEY)
+        end
+
         if not state then
+            runtime[key] = { lastKills = tonumber(record.lastClientKills) or current, lastHours = currentHours, lastCharacter = characterName(player) }
+            reconcileCurrentLife(record, current, key, "client-sync-server-baseline")
+            return
+        end
+        if currentHours < (state.lastHours or 0) then
+            if announceDeath then
+                recentDeaths[key] = SL.now()
+                announceDeath(record, player, SL.getOptions(), state.lastHours, state.lastCharacter)
+            end
+            record.lastClientKills = 0
+            resetStreak(record)
+        end
+        state.lastKills = current
+        state.lastHours = currentHours
+        state.lastCharacter = characterName(player)
+        reconcileCurrentLife(record, current, key, "client-sync-server")
+        return
+    end
+    if not state then
             runtime[key] = { lastKills = tonumber(record.lastClientKills) or 0, lastHours = currentHours, lastCharacter = characterName(player) }
             return
         end
