@@ -854,22 +854,6 @@ local function observePlayer(player)
         return
     end
     if not state then
-            runtime[key] = { lastKills = tonumber(record.lastClientKills) or 0, lastHours = currentHours, lastCharacter = characterName(player) }
-            return
-        end
-        if currentHours < (state.lastHours or 0) then
-            if announceDeath then
-                recentDeaths[key] = SL.now()
-                announceDeath(record, player, SL.getOptions(), state.lastHours, state.lastCharacter)
-            end
-            record.lastClientKills = 0
-            resetStreak(record)
-        end
-        state.lastHours = currentHours
-        state.lastCharacter = characterName(player)
-        return
-    end
-    if not state then
         local previous = tonumber(record.lastVanillaKills)
         if previous and current < previous then
             resetStreak(record)
