@@ -208,7 +208,7 @@ local function reconcileStoredCurrentLives()
             local beforeTotal = math.max(0, math.floor(tonumber(record.totalKills) or 0))
             local beforeStreak = math.max(0, math.floor(tonumber(record.streakKills) or 0))
             local baseline = math.max(0, math.floor(tonumber(record.lastVanillaKills) or 0))
-            reconcileCurrentLife(record, baseline, key, "v1.10.2-startup")
+            reconcileCurrentLife(record, baseline, key, "v1.10.3-startup")
             if beforeTotal ~= record.totalKills or beforeStreak ~= record.streakKills then
                 changed = changed + 1
             end
