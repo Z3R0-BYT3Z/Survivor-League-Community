@@ -1,1 +1,1 @@
-v1.10.2 fixes lifetime totals and current-life kill streaks by reconciling stored Build 42 counters without changing season standings; also retains the corrected Workshop package layout and F6 handshake from v1.10.1.
+v1.10.3 safely re-runs lifetime-score reconciliation for servers whose earlier one-time migration completed before all historical kills were recovered. It saves a full backup first, never lowers totals or season standings, and leaves ambiguous overlaps unchanged for admin review.
