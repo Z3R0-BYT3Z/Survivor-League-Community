@@ -1,6 +1,6 @@
 # Survivor League
 
-Current version: **1.10.2**
+Current version: **1.10.3**
 
 Survivor League is the unified, open-source Project Zomboid Build 42 multiplayer competition mod. It combines the former Community and Meeks Protocol editions through selectable interface themes while retaining one authoritative scoring and persistence system.
 
@@ -51,7 +51,7 @@ Administrators always receive all Survivor League management permissions. Modera
 
 ## Updating from 1.8.0
 
-Replace both the client and server copies with the complete 1.10.0 package, then restart Project Zomboid and the server. Mixed installations are intentionally rejected by the version handshake. Existing standings, season history, and Sandbox settings are upgraded in place to data schema 2.
+Replace both the client and server copies with the complete 1.10.3 package, then restart Project Zomboid and the server. Mixed installations are intentionally rejected by the version handshake. Existing standings, season history, and Sandbox settings are upgraded in place to data schema 2. On the first server start with v1.10.3, the guarded lifetime-score reconciliation runs once under revision 2, saves a full pre-repair score backup in server ModData, and only raises totals when a stronger stored baseline is available.
 
 ## Installation
 
