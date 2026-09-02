@@ -7,6 +7,8 @@ require "SurvivorLeagueCommunity_ScoringPolicy"
 
 local SL = SurvivorLeagueCommunity
 local CURRENT_SCHEMA_VERSION = 2
+local LEGACY_RECONCILIATION_VERSION = 2
+local CURRENT_LIFE_RECONCILIATION_VERSION = 2
 local runtime = {}
 local announceDeath
 local announceKills
@@ -151,6 +153,8 @@ local function announceJoin(player)
     })
 end
 
+local copyValue
+
 local function resetStreak(record)
     record.streakKills = 0
     record.streakMilestonesGranted = {}
@@ -185,7 +189,17 @@ end
 
 local function reconcileStoredCurrentLives()
     local d = data()
-    if tonumber(d.currentLifeReconciliationVersion) == 1 then return end
+    local previousVersion = math.max(0, math.floor(tonumber(d.currentLifeReconciliationVersion) or 0))
+    if previousVersion >= CURRENT_LIFE_RECONCILIATION_VERSION then return end
+
+    local runAt = SL.now()
+    d.currentLifeReconciliationBackupV2 = {
+        createdAt = runAt,
+        previousVersion = previousVersion,
+        scores = copyValue(d.scores or {}),
+    }
+    print("[SurvivorLeagueCommunityReconciliation] v2 backup saved | records="
+        .. tostring((function() local n=0 for _ in pairs(d.scores or {}) do n=n+1 end return n end)()))
 
     local changed, count = 0, 0
     for key, record in pairs(d.scores or {}) do
@@ -201,14 +215,14 @@ local function reconcileStoredCurrentLives()
         end
     end
 
-    d.currentLifeReconciliationVersion = 1
-    d.currentLifeReconciledAt = SL.now()
+    d.currentLifeReconciliationVersion = CURRENT_LIFE_RECONCILIATION_VERSION
+    d.currentLifeReconciledAt = runAt
     ModData.transmit(SL.DATA_KEY)
     print("[SurvivorLeagueCommunityReconciliation] startup complete | changed=" .. tostring(changed)
         .. " | records=" .. tostring(count))
 end
 
-local function copyValue(value, seen)
+copyValue = function(value, seen)
     if type(value) ~= "table" then return value end
     seen = seen or {}
     if seen[value] then return seen[value] end
@@ -246,14 +260,14 @@ local migrationChecked = false
 local function migrateLegacyMeeks(canonical)
     if migrationChecked then return end
     migrationChecked = true
-    if canonical.legacyReconciliationVersion then
+    if math.max(0, math.floor(tonumber(canonical.legacyReconciliationVersion) or 0)) >= LEGACY_RECONCILIATION_VERSION then
         SurvivorLeagueCommunity.USE_LEGACY_SETTINGS = canonical.useLegacyMeeksSettings == true
         return
     end
     local legacy = existingModData("SurvivorLeagueData")
     local canonicalActive, legacyActive = activeDataset(canonical), activeDataset(legacy)
     if not legacyActive then
-        canonical.legacyReconciliationVersion = 1
+        canonical.legacyReconciliationVersion = LEGACY_RECONCILIATION_VERSION
         canonical.legacyReconciledAt = SL.now()
         canonical.legacyReconciliationSummary = { imported = 0, baselined = 0, duplicate = 0, canonicalNewer = 0, review = 0 }
         print("[SurvivorLeagueCommunityMigration] COMPLETE no active legacy dataset was found; one-time reconciliation marker saved")
@@ -264,7 +278,7 @@ local function migrateLegacyMeeks(canonical)
         canonical.migratedFrom = "SurvivorLeagueData"
         canonical.migrationVersion = 1
         canonical.migratedAt = SL.now()
-        canonical.legacyReconciliationVersion = 1
+        canonical.legacyReconciliationVersion = LEGACY_RECONCILIATION_VERSION
         canonical.legacyReconciledAt = canonical.migratedAt
         canonical.useLegacyMeeksSettings = true
         SurvivorLeagueCommunity.USE_LEGACY_SETTINGS = true
@@ -281,7 +295,7 @@ local function migrateLegacyMeeks(canonical)
     canonical.scores = canonical.scores or {}
     local legacyScores = type(legacy.scores) == "table" and legacy.scores or {}
     local runAt = SL.now()
-    canonical.legacyReconciliationBackupV1 = {
+    canonical.legacyReconciliationBackupV2 = {
         createdAt = runAt,
         canonicalScores = copyValue(canonical.scores),
         legacyScores = copyValue(legacyScores),
@@ -360,7 +374,7 @@ local function migrateLegacyMeeks(canonical)
 
     canonical.legacyReconciliationReview = review
     canonical.legacyReconciliationSummary = summary
-    canonical.legacyReconciliationVersion = 1
+    canonical.legacyReconciliationVersion = LEGACY_RECONCILIATION_VERSION
     canonical.legacyReconciledAt = runAt
     canonical.migrationConflict = summary.review > 0
     canonical.migrationConflictAt = summary.review > 0 and runAt or nil
