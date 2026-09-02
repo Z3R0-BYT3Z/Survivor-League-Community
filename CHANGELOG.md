@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.10.3
+
+- Re-runs the guarded legacy and current-life lifetime-score reconciliations under revision 2 for servers where the earlier one-time flag completed before totals were fully recovered.
+- Saves a complete pre-repair canonical score snapshot in `currentLifeReconciliationBackupV2` before changing any score.
+- Preserves lifetime totals with max-only reconciliation; this repair can increase an undercounted total but never decrease an existing total or current-season standing.
+- Imports unambiguous legacy-only and zero-season historical baselines while leaving ambiguous overlapping records unchanged and logged for administrator review.
+- Bumps the internal release handshake to 23 so mixed v1.10.2/v1.10.3 client-server installations are rejected.
+
 ## 1.10.0
 
 - Added hybrid score-source attribution for server, client-fallback, and administrator corrections.
