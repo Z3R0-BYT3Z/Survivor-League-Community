@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.10.4
+
+- Fixes the v1.10.3 startup reconciliation crash caused by the local ModData accessor being referenced before initialization.
+- Allows the revision-2 backup and lifetime-score reconciliation to complete during `OnServerStarted`.
+- Retains the max-only repair policy: totals and season standings are never reduced.
+- Bumps the internal release handshake to 24 so mixed v1.10.3/v1.10.4 installations are rejected.
+
 ## 1.10.3
 
 - Re-runs the guarded legacy and current-life lifetime-score reconciliations under revision 2 for servers where the earlier one-time flag completed before totals were fully recovered.
