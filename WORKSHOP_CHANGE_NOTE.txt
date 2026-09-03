@@ -1,1 +1,1 @@
-v1.10.4 fixes the v1.10.3 startup reconciliation crash so the revision-2 backup and lifetime-total repair can complete. The repair remains max-only and never lowers totals or season standings.
+v1.10.4 fixes the startup reconciliation crash and accepts large reconnect catch-ups when the server independently confirms the kill counter. Backups remain automatic, and totals or season standings are never reduced.
