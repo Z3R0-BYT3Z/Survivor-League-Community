@@ -12,7 +12,6 @@ function Policy.evaluateClientReport(previous, current, elapsed, maximumPerMinut
     local rateLimit = math.max(1, math.ceil((tonumber(maximumPerMinute) or 1) * elapsed / 60))
     local allowedDelta = math.min(math.max(1, tonumber(maximumDelta) or 1), rateLimit)
     local gained = current - previous
-    if gained > allowedDelta then return "quarantine-rate", gained, allowedDelta end
 
     if serverReliable == true then
         serverCurrent = math.max(0, math.floor(tonumber(serverCurrent) or 0))
@@ -20,7 +19,12 @@ function Policy.evaluateClientReport(previous, current, elapsed, maximumPerMinut
         if current > serverCurrent + tolerance then
             return "quarantine-server", gained, serverCurrent + tolerance
         end
+        -- A large reconnect catch-up is trustworthy when the authoritative
+        -- server counter independently confirms it. Apply the rate limit only
+        -- to reports that do not have that server-side confirmation.
+        return "accept", gained, allowedDelta
     end
+    if gained > allowedDelta then return "quarantine-rate", gained, allowedDelta end
     return "accept", gained, allowedDelta
 end
 
