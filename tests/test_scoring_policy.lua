@@ -16,5 +16,6 @@ expect("rate spike quarantined", "quarantine-rate", 40, 10, 50, 15, 120, 500, 0,
 expect("unreliable zero server ignored", "accept", 2, 10, 12, 15, 120, 500, 0, false, 3)
 expect("reliable server mismatch quarantined", "quarantine-server", 4, 10, 14, 15, 120, 500, 9, true, 3)
 expect("reliable server tolerance accepted", "accept", 2, 10, 12, 15, 120, 500, 9, true, 3)
+expect("server-confirmed reconnect catch-up accepted", "accept", 731, 141, 872, 15, 120, 500, 872, true, 3)
 
 print("Scoring policy tests passed")
