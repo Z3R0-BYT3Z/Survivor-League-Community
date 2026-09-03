@@ -5,6 +5,7 @@
 - Fixes the v1.10.3 startup reconciliation crash caused by the local ModData accessor being referenced before initialization.
 - Allows the revision-2 backup and lifetime-score reconciliation to complete during `OnServerStarted`.
 - Retains the max-only repair policy: totals and season standings are never reduced.
+- Accepts large reconnect catch-ups when the authoritative server counter independently confirms the reported value, preventing legitimate totals from being repeatedly quarantined by the rate limit.
 - Bumps the internal release handshake to 24 so mixed v1.10.3/v1.10.4 installations are rejected.
 
 ## 1.10.3
