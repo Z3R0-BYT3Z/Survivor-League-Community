@@ -1,6 +1,6 @@
 # Survivor League
 
-Current version: **1.10.4**
+Current version: **1.10.9**
 
 Survivor League is the unified, open-source Project Zomboid Build 42 multiplayer competition mod. It combines the former Community and Meeks Protocol editions through selectable interface themes while retaining one authoritative scoring and persistence system.
 
@@ -16,7 +16,7 @@ Survivor League is the unified, open-source Project Zomboid Build 42 multiplayer
 - **System-delivered status notices:** Protocol, reward, correction, streak-reset, and settlement notices appear as server/system messages instead of making the player's character speak.
 - **Hybrid synchronization:** Dedicated servers prefer the server player object. The Build 42 compatibility fallback records client-sourced increases separately, rate-limits them, compares them with reliable server counters, and quarantines suspicious reports.
 - **Reward trust controls:** Unverified client-fallback increases do not grant milestone rewards by default. Trusted communities may explicitly enable fallback milestone rewards in Sandbox Options.
-- **Verified death fallback:** Optional client death reports are accepted only when the server confirms that the player is dead.
+- **Authenticated death fallback:** Build 42 death events are detected through native callbacks, local-state polling, and the vanilla death-chat message. Reports require the active client/server session token and duplicate protection.
 - **Master enable control:** Disabling the mod now stops tracking, commands, rewards, join notices, death notices, and leaderboard requests consistently.
 - **Protocol verification:** Clients must complete an exact protocol and release handshake before gameplay or administrative commands are accepted.
 - **UTF-8-safe names:** Multibyte player and character names are sanitized and truncated only at valid character boundaries.
@@ -39,7 +39,7 @@ Season expiry is checked when the server starts, once per minute, and during nor
 
 **Season Kills are cumulative for the active season.** Death resets only Current Streak and its once-per-life milestone claims. Total Kills and Best Streak remain persistent. The legacy `LeaderboardSize` value is still read from saved presets for compatibility, but the option is hidden and the Command Center always paginates all registered scores at 10 players per page.
 
-Leaderboard requests are throttled on both client and server, and player names are sanitized and length-limited before being sent to the interface. Verified client death reports are disabled by default and should only be enabled for hosted/co-op sessions that miss native death events.
+Leaderboard requests are throttled on both client and server, and player names are sanitized and length-limited before being sent to the interface. Authenticated client death reports are enabled by default because Build 42 dedicated multiplayer does not consistently deliver native Lua death events.
 
 The Command Center key defaults to Project Zomboid key code `64` (F6). Set **Command Center key code** to another valid key code to rebind it. Server logs include structured protocol decisions, automatic-settlement triggers, admin settlement requests, rejected unauthorized settlement attempts, and settlement completion summaries.
 
@@ -51,7 +51,7 @@ Administrators always receive all Survivor League management permissions. Modera
 
 ## Updating from 1.8.0
 
-Replace both the client and server copies with the complete 1.10.4 package, then restart Project Zomboid and the server. Mixed installations are intentionally rejected by the version handshake. Existing standings, season history, and Sandbox settings are upgraded in place to data schema 2. On the first server start with v1.10.4, the guarded lifetime-score reconciliation runs once under revision 2, saves a full pre-repair score backup in server ModData, and only raises totals when a stronger stored baseline is available.
+Replace both the client and server copies with the complete 1.10.9 package, then restart Project Zomboid and the server. Existing standings, season history, and Sandbox settings remain on data schema 2. Version 1.10.9 retains the guarded lifetime-score reconciliation and adds the Build 42 death-announcement fallback.
 
 ## Installation
 

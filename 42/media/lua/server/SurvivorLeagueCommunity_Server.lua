@@ -1100,8 +1100,9 @@ local function onClientDeathReport(player, reportedKills)
     local verifiedDead = false
     pcall(function() verifiedDead = player:isDead() == true end)
     if not verifiedDead then
-        print("[SurvivorLeagueCommunityWarning] Rejected unverified client death report for " .. tostring(key))
-        return
+        -- Build 42 may clear the server death state before the authenticated
+        -- report arrives. Token, sequence, and cooldown checks still apply.
+        print("[SurvivorLeagueCommunityWarning] Accepting authenticated client death report after server death state cleared for " .. tostring(key))
     end
     clientDeathReportTimes[key] = now
     -- Never trust client-provided survival duration.

@@ -17,10 +17,12 @@ local playerReadyPending = true
 local playerReadyAttempts = 0
 local pendingJoinMessages = {}
 local clientUpdateTicks = 0
+local deathMonitorTicks = 0
 local lastBoardRequestAt = 0
 local protocolCompatible = false
 local sessionToken = nil
 local reportSequence = 0
+local deathReportSent = false
 local openAfterHandshake = false
 local boardRequestSequence = 0
 local latestAppliedBoardRequest = 0
@@ -68,6 +70,7 @@ local function beginPlayerReady(playerIndex, player)
     playerReadyPending = true
     playerReadyAttempts = 0
     clientUpdateTicks = 0
+    deathReportSent = false
     sendClientCommand(SL.MODULE, "PlayerReady", { protocol = SL.PROTOCOL_VERSION, version = SL.VERSION })
     return true
 end
@@ -831,8 +834,14 @@ end
 
 local function reportLocalDeath(player)
     if not SL.getOptions().allowClientDeathReports then return end
+    if deathReportSent then return end
+    if not protocolCompatible or not sessionToken or sessionToken == "" then
+        print("[SurvivorLeagueDeathRelay] Death detected before handshake; report deferred")
+        return
+    end
     local p = player or getPlayer()
     if not p then return end
+    deathReportSent = true
     reportLocalKills(true)
     print("[SurvivorLeagueDeathRelay] Reporting local death to server")
     local kills = 0
@@ -847,10 +856,67 @@ end
 
 local function onLocalPlayerUpdate(player)
     if player and getPlayer() and player ~= getPlayer() then return end
+    local p = player or (getPlayer and getPlayer())
+    if p then
+        local dead = false
+        pcall(function() dead = p:isDead() == true end)
+        if dead then
+            -- Build 42 dedicated multiplayer does not reliably fire the Lua
+            -- OnPlayerDeath event. Poll the local state as a fallback.
+            reportLocalDeath(p)
+        elseif deathReportSent then
+            deathReportSent = false
+        end
+    end
     clientUpdateTicks = clientUpdateTicks + 1
     if clientUpdateTicks % 30 == 0 then retryPendingJoinAnnouncements(player) end
     if clientUpdateTicks % 120 == 0 then reportLocalKills(false) end
     if clientUpdateTicks % 300 == 0 then retryPlayerReady(player) end
+end
+
+-- Build 42 multiplayer displays the vanilla "<username> is dead." message,
+-- but does not consistently expose that death through Lua callbacks or logs.
+local function onChatMessageAdded(chatMessage, tabId)
+    if not SL.getOptions().allowClientDeathReports then return end
+    local message = ""
+    local ok = pcall(function()
+        if chatMessage and chatMessage.getText then
+            message = tostring(chatMessage:getText() or "")
+        else
+            message = tostring(chatMessage or "")
+        end
+    end)
+    if not ok or message == "" then return end
+
+    message = message:gsub("<[^>]->", ""):match("^%s*(.-)%s*$") or ""
+    local deadName = message:match("^(.+)%s+[Ii][Ss]%s+[Dd][Ee][Aa][Dd][%.!]?$")
+    if not deadName then return end
+
+    local player = getPlayer and getPlayer()
+    if not player then return end
+    local localName = tostring(SL.playerKey(player) or "")
+    deadName = deadName:match("^%s*(.-)%s*$") or ""
+    if deadName:lower() ~= localName:lower() then return end
+
+    print("[SurvivorLeagueDeathRelay] Native death chat detected for local player")
+    reportLocalDeath(player)
+end
+
+-- The global client tick continues while Build 42 displays the death screen.
+local function monitorLocalDeath()
+    deathMonitorTicks = deathMonitorTicks + 1
+    if deathMonitorTicks % 10 ~= 0 then return end
+    if not SL.getOptions().allowClientDeathReports then return end
+
+    local player = getPlayer and getPlayer()
+    if not player then return end
+    local dead = false
+    pcall(function() dead = player:isDead() == true end)
+    if dead then
+        reportLocalDeath(player)
+    elseif deathReportSent then
+        deathReportSent = false
+    end
 end
 
 Events.OnServerCommand.Add(onServerCommand)
@@ -858,4 +924,6 @@ Events.OnKeyPressed.Add(onKeyPressed)
 print("[SurvivorLeagueCommunity] Client loaded; interfaceKey="..tostring(SL.getOptions().interfaceKey))
 Events.OnPlayerUpdate.Add(onLocalPlayerUpdate)
 if Events.OnPlayerDeath then Events.OnPlayerDeath.Add(reportLocalDeath) end
+if Events.OnAddMessage then Events.OnAddMessage.Add(onChatMessageAdded) end
+if Events.OnTick then Events.OnTick.Add(monitorLocalDeath) end
 if Events.OnCreatePlayer then Events.OnCreatePlayer.Add(reportPlayerReady) end

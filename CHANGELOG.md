@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.10.9
+
+- Restores Discord, website, in-game chat, and halo death announcements on Build 42 dedicated multiplayer servers.
+- Adds native death-event, local player-state, global tick, and vanilla death-chat detection paths.
+- Requires an accepted client/server handshake and session token, and suppresses duplicate reports for the same death.
+- Accepts an authenticated report when Build 42 clears the server player death state before the command is processed.
+- Enables client death reports by default, including when older generated SandboxVars files omit the setting.
+- Corrects `media/sandbox-options.txt` to the schema header accepted by the deployed Build 42.20.4 server, eliminating the `invalid or missing VERSION` parser failure.
+
 ## 1.10.4
 
 - Fixes the v1.10.3 startup reconciliation crash caused by the local ModData accessor being referenced before initialization.

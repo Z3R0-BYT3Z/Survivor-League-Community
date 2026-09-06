@@ -41,6 +41,8 @@ def main() -> None:
         if path.is_file() and ".git" not in path.parts and "dist" not in path.parts and forbidden(path.relative_to(ROOT)):
             fail(f"Forbidden repository artifact: {path.relative_to(ROOT)}")
     sandbox = (ROOT / "42/media/sandbox-options.txt").read_text(encoding="utf-8-sig")
+    if not re.search(r"^VERSION\s*=\s*1,\s*$", sandbox, re.MULTILINE):
+        fail("Sandbox options must use the deployed Build 42.20.4-compatible VERSION = 1 header")
     config = (ROOT / "42/media/lua/shared/SurvivorLeagueCommunity_Config.lua").read_text(encoding="utf-8-sig")
     option_names = set(re.findall(rf"\boption\s+{PREFIX}\.([A-Za-z0-9_]+)", sandbox))
     config_names = set(re.findall(r"\broot\.([A-Za-z0-9_]+)", config))
@@ -104,6 +106,10 @@ def main() -> None:
         fail("Configured hosted kill-rate enforcement or report acknowledgements are missing")
     if "captureFinalAuthoritativeKills" not in server:
         fail("Final authoritative death synchronization is missing")
+    if "monitorLocalDeath" not in client or "Native death chat detected for local player" not in client:
+        fail("Build 42 client death-screen fallback is missing")
+    if "deathReportSent" not in client or "sessionToken" not in client:
+        fail("Authenticated duplicate-safe client death reporting is missing")
     if "ScoringPolicy.evaluateClientReport" not in server or "quarantineReport" not in server:
         fail("Hybrid client-report quarantine policy is missing")
     if 'recordScoreSource(record, "clientFallback"' not in server or 'recordScoreSource(record, "server"' not in server:

@@ -118,7 +118,9 @@ function SurvivorLeagueCommunity.getOptions()
         clientReportMinimumSeconds = math.max(1, tonumber(root.ClientKillReportIntervalSeconds) or 15),
         maximumClientKillDelta = 500,
         maximumRewardItemCount = 100,
-        allowClientDeathReports = root.AllowClientDeathReports == true,
+        -- Default enabled when older SandboxVars files omit this option.
+        -- Build 42 does not reliably deliver native multiplayer death events.
+        allowClientDeathReports = root.AllowClientDeathReports ~= false,
         deathReportMinimumSeconds = math.max(1, tonumber(root.DeathReportMinimumSeconds) or 10),
         deathAnnouncements = root.DeathAnnouncements ~= false,
         deathChatAnnouncements = root.DeathChatAnnouncements ~= false,

@@ -1,1 +1,1 @@
-v1.10.4 fixes the startup reconciliation crash and accepts large reconnect catch-ups when the server independently confirms the kill counter. Backups remain automatic, and totals or season standings are never reduced.
+v1.10.9 restores Build 42 dedicated-server death announcements in Discord and in-game chat. It adds authenticated death-screen fallbacks, duplicate protection, enables client death reports by default, and fixes the Sandbox Options VERSION parser error.

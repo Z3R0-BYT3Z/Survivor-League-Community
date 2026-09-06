@@ -1,0 +1,12 @@
+Survivor League Community v1.10.9
+
+- Restores death announcements on Project Zomboid Build 42 dedicated servers.
+- Detects death through the native callback, local player-state polling, the
+  global client tick during the death screen, and the vanilla death-chat line.
+- Requires the accepted session handshake and suppresses duplicate reports.
+- Enables authenticated client death reports by default.
+- Uses the sandbox-options schema header accepted by the deployed Build
+  42.20.4 parser, preventing the invalid or missing VERSION startup error.
+
+Workshop ID: 3784151798
+Mod ID: SurvivorLeagueCommunity
