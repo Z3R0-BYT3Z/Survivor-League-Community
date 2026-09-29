@@ -24,6 +24,7 @@ Survivor League is the unified, open-source Project Zomboid Build 42 multiplayer
 - **White-label branding:** Configure the Command Center title and subtitle without maintaining a separate build.
 - **Guarded legacy migration:** Empty Community datasets can import the former `SurvivorLeagueData` table without deleting it. Populated datasets are never merged automatically.
 - **Relay-ready logging:** Structured `[SurvivorLeagueKill]`, `[SurvivorLeagueDeath]`, and `[SurvivorLeagueCommunityJoin]` markers can be consumed by optional Discord or website relays.
+- **Optional Discord relay preview:** The server exports a complete standings snapshot to its log every minute for the separate read-only service documented in [`relay/README.md`](relay/README.md). Discord credentials remain outside the Workshop mod.
 
 ## Configuration
 
