@@ -1499,6 +1499,38 @@ SL.ServerAPI.getSnapshot = function()
     }
 end
 
+-- A complete, bounded snapshot for optional external relays. Each row is
+-- percent-encoded so player names cannot create fields or extra log lines.
+local relaySnapshotSequence = 0
+local function relayEscape(value)
+    return tostring(value or ""):gsub("([^%w%-_%.~])", function(character)
+        return string.format("%%%02X", string.byte(character))
+    end)
+end
+local function emitRelaySnapshot()
+    local opts = SL.getOptions()
+    if not opts.enabled then return end
+    local snapshot = SL.ServerAPI.getSnapshot()
+    relaySnapshotSequence = relaySnapshotSequence + 1
+    local batch = tostring(snapshot.generatedAt) .. "-" .. tostring(relaySnapshotSequence)
+    print("[SurvivorLeagueSnapshot] v=1 | batch=" .. batch
+        .. " | season=" .. tostring(snapshot.seasonId)
+        .. " | started=" .. tostring(snapshot.startedAt)
+        .. " | ends=" .. tostring(snapshot.endsAt)
+        .. " | count=" .. tostring(#snapshot.rows))
+    for rank, row in ipairs(snapshot.rows) do
+        print("[SurvivorLeagueSnapshotRow] batch=" .. batch
+            .. " | rank=" .. tostring(rank)
+            .. " | user=" .. relayEscape(row.username)
+            .. " | name=" .. relayEscape(row.displayName)
+            .. " | kills=" .. tostring(row.kills)
+            .. " | total=" .. tostring(row.totalKills)
+            .. " | streak=" .. tostring(row.streakKills)
+            .. " | best=" .. tostring(row.bestStreak))
+    end
+    print("[SurvivorLeagueSnapshotEnd] batch=" .. batch)
+end
+
 local function onClientCommand(module, command, player, args)
     if module ~= SL.MODULE then return end
     local opts = SL.getOptions()
@@ -1674,5 +1706,9 @@ if Events.OnServerStarted then Events.OnServerStarted.Add(function()
     validateConfiguration()
     reconcileStoredCurrentLives()
     checkSeasonSettlement("server-start")
+    emitRelaySnapshot()
 end) end
-if Events.EveryOneMinute then Events.EveryOneMinute.Add(function() checkSeasonSettlement("one-minute") end) end
+if Events.EveryOneMinute then Events.EveryOneMinute.Add(function()
+    checkSeasonSettlement("one-minute")
+    emitRelaySnapshot()
+end) end
