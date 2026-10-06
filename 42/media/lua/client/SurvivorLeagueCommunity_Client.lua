@@ -19,6 +19,7 @@ local pendingJoinMessages = {}
 local clientUpdateTicks = 0
 local deathMonitorTicks = 0
 local lastBoardRequestAt = 0
+local pendingBoardRequest = nil
 local protocolCompatible = false
 local sessionToken = nil
 local reportSequence = 0
@@ -37,6 +38,8 @@ end
 
 local function closeBoard(target)
     target:setVisible(false); target:removeFromUIManager(); panel = nil; currentBoardPage = 1
+    pendingBoardRequest = nil
+    boardRequestSequence = boardRequestSequence + 1
 end
 
 local function reportLocalKills(force)
@@ -87,24 +90,34 @@ function SL.requestScoreCorrection(username, seasonKills, totalKills, streakKill
     return true
 end
 
-local function refreshBoard(page, search, pageSize)
-    if not protocolCompatible then return end
+-- Preserve the latest navigation request through the server's two-second
+-- request limit. Assign IDs when queued so superseded replies cannot win.
+local function flushBoardRequest()
+    if not protocolCompatible or not pendingBoardRequest then return end
     local now = SL.now()
     if lastBoardRequestAt > 0 and (now - lastBoardRequestAt) < 2 then return end
+    local request = pendingBoardRequest
+    pendingBoardRequest = nil
     lastBoardRequestAt = now
     reportLocalKills(true)
+    sendClientCommand(SL.MODULE, "RequestLeaderboard", request)
+end
+
+local function refreshBoard(page, search, pageSize)
+    if not protocolCompatible then return end
     currentBoardPage = math.max(1, math.floor(tonumber(page) or currentBoardPage or 1))
     if search ~= nil then currentBoardSearch = tostring(search or "") end
     boardRequestSequence = boardRequestSequence + 1
     pageSize = math.max(5, math.min(25, math.floor(tonumber(pageSize)
         or (rowsPerPageForHeight and rowsPerPageForHeight(getCore():getScreenHeight()))
         or 7)))
-    sendClientCommand(SL.MODULE, "RequestLeaderboard", {
+    pendingBoardRequest = {
         page = currentBoardPage,
         pageSize = pageSize,
         search = currentBoardSearch,
         requestId = boardRequestSequence,
-    })
+    }
+    flushBoardRequest()
 end
 
 local function countdown(payload)
@@ -259,8 +272,8 @@ end
 function LeaderboardPanel:updateControls()
     local ranking = self.activeTab == "leaderboard"
     local adminTab = self.activeTab == "admin" and (self.payload.isAdmin == true or self.payload.canManageScores == true or self.payload.canManageRewards == true or self.payload.canManageSeasons == true)
-    if self.previousPage then self.previousPage:setVisible(ranking); self.previousPage.enable = self.currentPage > 1 end
-    if self.nextPage then self.nextPage:setVisible(ranking); self.nextPage.enable = self.currentPage < self:getPageCount() end
+    if self.previousPage then self.previousPage:setVisible(ranking); self.previousPage.enable = currentBoardPage > 1 end
+    if self.nextPage then self.nextPage:setVisible(ranking); self.nextPage.enable = currentBoardPage < self:getPageCount() end
     if self.settleButton then self.settleButton:setVisible(adminTab); self.settleButton.enable = self.payload.canManageSeasons == true end
     if self.recoveryPreviewButton then self.recoveryPreviewButton:setVisible(adminTab); self.recoveryPreviewButton.enable = self.payload.canViewDiagnostics == true end
     if self.searchEntry then self.searchEntry:setVisible(ranking) end
@@ -283,16 +296,15 @@ function LeaderboardPanel:updateControls()
 end
 
 function LeaderboardPanel:setPage(page)
-    self.currentPage = math.max(1, math.min(tonumber(page) or 1, self:getPageCount()))
-    currentBoardPage = self.currentPage
+    local requestedPage = math.max(1, math.min(tonumber(page) or 1, self:getPageCount()))
+    refreshBoard(requestedPage, currentBoardSearch, self:getRowsPerPage())
     self:updateControls()
-    refreshBoard(self.currentPage, currentBoardSearch, self:getRowsPerPage())
 end
 
-function LeaderboardPanel:onPreviousPage() self:setPage(self.currentPage - 1) end
-function LeaderboardPanel:onNextPage() self:setPage(self.currentPage + 1) end
+function LeaderboardPanel:onPreviousPage() self:setPage(currentBoardPage - 1) end
+function LeaderboardPanel:onNextPage() self:setPage(currentBoardPage + 1) end
 function LeaderboardPanel:onClose() closeBoard(self) end
-function LeaderboardPanel:onRefresh() refreshBoard(self.currentPage, currentBoardSearch, self:getRowsPerPage()) end
+function LeaderboardPanel:onRefresh() refreshBoard(currentBoardPage, currentBoardSearch, self:getRowsPerPage()) end
 function LeaderboardPanel:onSearch()
     currentBoardSearch = self.searchEntry and self.searchEntry:getText() or ""
     currentBoardPage = 1
@@ -518,12 +530,11 @@ function LeaderboardPanel:drawLeaderboard()
     self:drawText("SURVIVOR",survivorX+6,top+16,C.muted[1],C.muted[2],C.muted[3],1,UIFont.Small)
     self:drawTextCentre("SEASON",seasonX+(seasonW/2),top+16,C.muted[1],C.muted[2],C.muted[3],1,UIFont.Small)
     self:drawTextCentre("TOTAL",totalX+(totalW/2),top+16,C.muted[1],C.muted[2],C.muted[3],1,UIFont.Small)
-    self:drawTextCentre("STREAK",streakX+(streakW/2),top+16,C.muted[1],C.muted[2],C.muted[3],1,UIFont.Small)
+    self:drawTextCentre("BEST STREAK",streakX+(streakW/2),top+16,C.muted[1],C.muted[2],C.muted[3],1,UIFont.Small)
     self:drawRect(leftX+12,top+39,leftW-24,1,0.7,C.line[1],C.line[2],C.line[3])
     local rows = self.payload.rows or {}
     local rowsPerPage = self:getRowsPerPage()
     self.currentPage = math.max(1, math.min(self.currentPage, self:getPageCount()))
-    currentBoardPage = self.currentPage
     local firstRank = tonumber(self.payload.firstRank) or (((self.currentPage-1)*rowsPerPage)+1)
     local lastRank = firstRank + #rows - 1
     local rowH = math.max(31, fontHeight(UIFont.Medium)+8)
@@ -545,7 +556,7 @@ function LeaderboardPanel:drawLeaderboard()
         self:drawText(fitText(row.username or row.displayName or row.characterName,survivorW-12,UIFont.Medium),survivorX+6,valueY,C.text[1],C.text[2],C.text[3],1,UIFont.Medium)
         self:drawTextCentre(tostring(row.kills or 0),seasonX+(seasonW/2),valueY,C.text[1],C.text[2],C.text[3],1,UIFont.Medium)
         self:drawTextCentre(tostring(row.totalKills or 0),totalX+(totalW/2),valueY,C.text[1],C.text[2],C.text[3],1,UIFont.Medium)
-        self:drawTextCentre(tostring(row.streakKills or 0),streakX+(streakW/2),valueY,C.text[1],C.text[2],C.text[3],1,UIFont.Medium)
+        self:drawTextCentre(tostring(math.max(tonumber(row.bestStreak) or 0, tonumber(row.streakKills) or 0)),streakX+(streakW/2),valueY,C.text[1],C.text[2],C.text[3],1,UIFont.Medium)
     end
     local filterText = tostring(self.payload.search or "") ~= "" and (" | FILTER: "..tostring(self.payload.search)) or ""
     drawTextCenteredInBox(self,tostring(self.currentPage).." / "..tostring(self:getPageCount())..filterText,leftX+(leftW/2)-80,paginationY,160,28,C.text,UIFont.Small)
@@ -675,6 +686,7 @@ local function showBoard(payload)
     if responseId > 0 and responseId < boardRequestSequence then return end
     if responseId > 0 and responseId < latestAppliedBoardRequest then return end
     if responseId > 0 then latestAppliedBoardRequest = responseId end
+    currentBoardPage = math.max(1, tonumber(payload and payload.page) or currentBoardPage)
     if panel then panel:removeFromUIManager() end
     payload = payload or {}; payload.clientReceivedAt = SL.now()
     panel = LeaderboardPanel:new(payload); panel:initialise(); panel:addToUIManager()
@@ -925,5 +937,8 @@ print("[SurvivorLeagueCommunity] Client loaded; interfaceKey="..tostring(SL.getO
 Events.OnPlayerUpdate.Add(onLocalPlayerUpdate)
 if Events.OnPlayerDeath then Events.OnPlayerDeath.Add(reportLocalDeath) end
 if Events.OnAddMessage then Events.OnAddMessage.Add(onChatMessageAdded) end
-if Events.OnTick then Events.OnTick.Add(monitorLocalDeath) end
+if Events.OnTick then
+    Events.OnTick.Add(monitorLocalDeath)
+    Events.OnTick.Add(flushBoardRequest)
+end
 if Events.OnCreatePlayer then Events.OnCreatePlayer.Add(reportPlayerReady) end

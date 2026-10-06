@@ -1,6 +1,6 @@
 {
-  "public_version": "1.10.9",
-  "runtime_version": 24,
+  "public_version": "1.10.10",
+  "runtime_version": 25,
   "protocol_version": 5,
   "data_schema_version": 2
 }

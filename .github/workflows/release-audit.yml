@@ -26,6 +26,8 @@ jobs:
           done < <(find 42/media/lua -type f -name '*.lua' -print0)
       - name: Run scoring policy behavior tests
         run: lua5.1 tests/test_scoring_policy.lua
+      - name: Run navigation and best-streak regression tests
+        run: lua5.1 tests/test_navigation_and_streak.lua
       - name: Audit canonical source
         run: python3 tools/audit_release.py
       - name: Build clean Workshop package

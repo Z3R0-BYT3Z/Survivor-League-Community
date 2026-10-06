@@ -13,3 +13,6 @@ desktop.ini
 *.zip
 *.log
 logs/
+
+# Generated Workshop builds
+dist/

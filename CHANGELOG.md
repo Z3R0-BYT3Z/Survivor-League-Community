@@ -1,3 +1,9 @@
+## 1.10.10
+
+- Queue rapid page requests without changing the displayed page before its rows arrive.
+- Display best lifetime kill streak on the leaderboard.
+- Preserve the highest recorded streak before death resets and counter reconciliation.
+
 # Changelog
 
 ## 1.10.9

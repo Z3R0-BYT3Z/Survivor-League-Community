@@ -157,6 +157,7 @@ local copyValue
 local data
 
 local function resetStreak(record)
+    record.bestStreak = math.max(tonumber(record.bestStreak) or 0, tonumber(record.streakKills) or 0)
     record.streakKills = 0
     record.streakMilestonesGranted = {}
     record.streakMilestoneDelivery = {}
@@ -176,7 +177,7 @@ local function reconcileCurrentLife(record, current, key, source)
 
     record.streakKills = current
     record.totalKills = correctedTotal
-    record.bestStreak = math.max(tonumber(record.bestStreak) or 0, current)
+    record.bestStreak = math.max(tonumber(record.bestStreak) or 0, previousStreak, current)
 
     if previousStreak ~= current or previousTotal ~= correctedTotal then
         record.currentLifeReconciledAt = SL.now()
@@ -496,6 +497,7 @@ local function recordFor(player)
     end
     if r.totalKills == nil then r.totalKills = tonumber(r.kills) or 0 end
     if r.streakKills == nil then r.streakKills = 0 end
+    r.bestStreak = math.max(tonumber(r.bestStreak) or 0, tonumber(r.streakKills) or 0)
     r.streakMilestonesGranted = r.streakMilestonesGranted or {}
     r.streakMilestoneDelivery = r.streakMilestoneDelivery or {}
     r.accountName = sanitizeName(accountName(player))
@@ -516,7 +518,7 @@ local function sortedScores()
             kills = tonumber(r.kills) or 0,
             totalKills = tonumber(r.totalKills) or tonumber(r.kills) or 0,
             streakKills = tonumber(r.streakKills) or 0,
-            bestStreak = tonumber(r.bestStreak) or tonumber(r.streakKills) or 0,
+            bestStreak = math.max(tonumber(r.bestStreak) or 0, tonumber(r.streakKills) or 0),
         }
     end
     local tiePolicy = SL.getOptions().seasonTiePolicy
